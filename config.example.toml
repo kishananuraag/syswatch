@@ -1,0 +1,17 @@
+# syswatch config — place at ~/.config/syswatch/config.toml
+# On Windows this resolves under %USERPROFILE%\.config\syswatch\config.toml
+# (or $XDG_CONFIG_HOME/syswatch/config.toml). Every key is optional.
+# CLI flags always override these values.
+
+interval_ms = 1000
+bar_width  = 20
+top_n      = 5
+temperature = false   # show CPU temp sensor when available
+color      = true
+
+[panels]
+cpu  = true
+ram  = true
+disk = true
+net  = true
+proc = true
