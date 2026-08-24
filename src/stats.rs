@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use sysinfo::{Components, Disks, Networks, System};
@@ -7,7 +7,7 @@ const MB: f64 = 1024.0 * 1024.0;
 const GB: f64 = 1024.0 * MB;
 
 /// One frame's worth of collected data. Also the JSON output shape.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Snapshot {
     pub timestamp: String,
     pub uptime_secs: u64,
@@ -22,7 +22,7 @@ pub struct Snapshot {
     pub process_count: usize,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Processes {
     /// Top processes by CPU usage.
     pub by_cpu: Vec<ProcRow>,
@@ -30,14 +30,14 @@ pub struct Processes {
     pub by_mem: Vec<ProcRow>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Cpu {
     pub total_pct: f32,
     pub per_core_pct: Vec<f32>,
     pub freq_mhz: u64,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Memory {
     pub used_bytes: u64,
     pub total_bytes: u64,
@@ -46,7 +46,7 @@ pub struct Memory {
     pub swap_total_bytes: u64,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Disk {
     pub mount: String,
     pub fs: String,
@@ -55,7 +55,7 @@ pub struct Disk {
     pub total_gb: f64,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Net {
     pub name: String,
     /// Received bytes per second since last tick.
@@ -64,7 +64,7 @@ pub struct Net {
     pub tx_bps: f64,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProcRow {
     pub pid: i32,
     pub name: String,

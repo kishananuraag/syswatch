@@ -2,6 +2,9 @@ use crate::config::Config;
 use crate::stats::{Collector, Snapshot};
 use crate::ui;
 use clap::Parser;
+use std::time::Duration;
+use crossterm::event::{self, Event, KeyCode, KeyModifiers};
+use crossterm::terminal;
 
 /// CLI surface. Values here override the config file; config file overrides defaults.
 #[derive(clap::Parser, Debug)]
@@ -113,7 +116,71 @@ pub fn run() {
     let mut collector = Collector::new(cfg.top_n);
     let mut tick: u64 = 0;
 
+    // Define view state
+    #[derive(Debug, Clone, Copy)]
+    enum View {
+        Live,
+        History,
+    }
+    let mut view = View::Live;
+    let mut history_state = ui::HistoryState {
+        selected_date: None,
+        range: ui::HistoryRange::TwentyFourHours,
+    };
+
+    // Set up terminal for raw mode (interactive TUI only; JSON mode is pipe-friendly).
+    if !cli.json {
+        if let Err(_) = terminal::enable_raw_mode() {
+            eprintln!("Failed to enter raw mode");
+            std::process::exit(1);
+        }
+    }
+
     loop {
+        // Check for events with a timeout of 0 (non-blocking)
+        if let Ok(true) = event::poll(Duration::from_millis(0)) {
+            if let Ok(Event::Key(key)) = event::read() {
+                match view {
+                    View::Live => {
+                        if key.code == KeyCode::Char('h') {
+                            view = View::History;
+                        } else if key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL) {
+                            break;
+                        }
+                    }
+                    View::History => {
+                        match key.code {
+                            KeyCode::Char('q') => {
+                                view = View::Live;
+                            }
+                            KeyCode::Char('2') => {
+                                history_state.range = ui::HistoryRange::TwentyFourHours;
+                            }
+                            KeyCode::Char('7') => {
+                                history_state.range = ui::HistoryRange::SevenDays;
+                            }
+                            KeyCode::Char('d') => {
+                                // Cycle through available log dates (then back to all days).
+                                let dates = ui::available_dates();
+                                history_state.selected_date = match &history_state.selected_date {
+                                    None => dates.first().cloned(),
+                                    Some(cur) => {
+                                        match dates.iter().position(|d| d == cur) {
+                                            Some(i) if i + 1 < dates.len() => {
+                                                Some(dates[i + 1].clone())
+                                            }
+                                            _ => None, // wrapped past the last date
+                                        }
+                                    }
+                                };
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
+        }
+
         collector.refresh();
         let snap: Snapshot = collector.snapshot(cfg.temp);
 
@@ -129,11 +196,22 @@ pub fn run() {
             break; // JSON mode prints one frame and exits (pipe-friendly)
         }
 
-        ui::flush(&ui::render(&snap, &cfg, tick));
+        let frame = match view {
+            View::Live => ui::render(&snap, &cfg, tick),
+            View::History => {
+                // We need to render the history view. We'll need to pass the log directory and state.
+                // We'll create a function in ui.rs for rendering history.
+                ui::render_history(&snap, &cfg, tick, &history_state)
+            }
+        };
+
+        ui::flush(&frame);
         tick += 1;
         std::thread::sleep(std::time::Duration::from_millis(cfg.interval_ms));
     }
 
+    // Cleanup
+    let _ = terminal::disable_raw_mode();
     if !cli.json {
         ui::cleanup();
     }

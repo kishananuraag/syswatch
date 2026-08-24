@@ -1,6 +1,9 @@
 use crate::config::Config;
 use crate::stats::{ProcRow, Snapshot};
-use std::io::Write;
+use std::fs;
+use std::fs::File;
+use std::io::{BufRead, BufReader, Write};
+use std::path::PathBuf;
 
 /// ANSI color helper; emits nothing when color is disabled.
 struct Palette {
@@ -121,6 +124,18 @@ fn truncate(s: &str, w: usize) -> String {
         Some((i, _)) => s[..i].to_string(),
         None => s.to_string(),
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct HistoryState {
+    pub selected_date: Option<String>, // YYYY-MM-DD, None for today
+    pub range: HistoryRange,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum HistoryRange {
+    TwentyFourHours,
+    SevenDays,
 }
 
 /// Render one full frame into a single String (double-buffered output:
@@ -323,4 +338,241 @@ pub fn flush(frame: &str) {
 pub fn cleanup() {
     print!("\x1b[?25h");
     let _ = std::io::stdout().flush();
+}
+
+/// List YYYY-MM-DD dates that have log files, sorted ascending.
+pub fn available_dates() -> Vec<String> {
+    let mut dates: Vec<String> = Vec::new();
+    for dir in crate::logging::log_dirs() {
+        if let Ok(entries) = fs::read_dir(&dir) {
+            for e in entries.flatten() {
+                let name = e.file_name().to_string_lossy().into_owned();
+                if let Some(d) = name.strip_suffix(".jsonl") {
+                    if d.len() == 10 {
+                        dates.push(d.to_string());
+                    }
+                }
+            }
+        }
+    }
+    dates.sort();
+    dates.dedup();
+    dates
+}
+
+/// Median time delta (seconds) between consecutive snapshots in the log data.
+/// Used to bucket history accurately regardless of which process wrote the logs.
+fn median_interval_secs(snaps: &[Snapshot]) -> Option<f64> {
+    if snaps.len() < 2 {
+        return None;
+    }
+    fn secs_of_day(ts: &str) -> Option<u64> {
+        let t = ts.get(11..19)?; // "HH:MM:SS"
+        let h: u64 = t.get(0..2)?.parse().ok()?;
+        let m: u64 = t.get(3..5)?.parse().ok()?;
+        let s: u64 = t.get(6..8)?.parse().ok()?;
+        Some(h * 3600 + m * 60 + s)
+    }
+    let mut deltas: Vec<u64> = Vec::with_capacity(snaps.len() - 1);
+    for w in snaps.windows(2) {
+        let (a, b) = (secs_of_day(&w[0].timestamp)?, secs_of_day(&w[1].timestamp)?);
+        let d = if b >= a { b - a } else { b + 86_400 - a }; // day rollover
+        if d > 0 {
+            deltas.push(d);
+        }
+    }
+    if deltas.is_empty() {
+        return None;
+    }
+    deltas.sort_unstable();
+    Some(deltas[deltas.len() / 2] as f64)
+}
+
+pub fn render_history(_snap: &Snapshot, cfg: &Config, _tick: u64, history_state: &HistoryState) -> String {
+    // Load + merge ALL log files across every candidate log dir (service +
+    // interactive; pruned to 30 days upstream), sorted by timestamp so the
+    // most recent window is the tail.
+    let mut files: Vec<PathBuf> = Vec::new();
+    for dir in crate::logging::log_dirs() {
+        if let Ok(entries) = fs::read_dir(&dir) {
+            for e in entries.flatten() {
+                let path = e.path();
+                if path.extension().and_then(|s| s.to_str()) == Some("jsonl") {
+                    files.push(path);
+                }
+            }
+        }
+    }
+    files.sort(); // Sort by name (which is date)
+
+    if files.is_empty() {
+        return "No log files found".to_string();
+    }
+
+    let mut snaps: Vec<Snapshot> = Vec::new();
+    for path in &files {
+        if let Ok(file) = File::open(path) {
+            for line in BufReader::new(file).lines().flatten() {
+                if let Ok(snap) = serde_json::from_str::<Snapshot>(&line) {
+                    snaps.push(snap);
+                }
+            }
+        }
+    }
+    // RFC 3339 timestamps sort lexicographically == chronologically.
+    snaps.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
+
+    if snaps.is_empty() {
+        return "No data in log files".to_string();
+    }
+
+    // Optional per-day filter ('d' key). None = all days.
+    if let Some(date) = &history_state.selected_date {
+        snaps.retain(|s| s.timestamp.starts_with(date.as_str()));
+        if snaps.is_empty() {
+            return format!("No data for {}", date);
+        }
+    }
+
+    // Determine bucketing parameters based on range
+    let (bucket_duration_secs, num_buckets) = match history_state.range {
+        HistoryRange::TwentyFourHours => (300.0, 288), // 5 minutes = 300 seconds, 24*60/5 = 288 buckets
+        HistoryRange::SevenDays => (3600.0, 168), // 1 hour = 3600 seconds, 7*24 = 168 buckets
+    };
+    // Derive the real sampling interval from the data (median delta between
+    // consecutive snapshots) — the service may log at a different rate than
+    // the interactive config.
+    let snapshot_interval_secs = median_interval_secs(&snaps)
+        .unwrap_or_else(|| cfg.interval_ms as f64 / 1000.0)
+        .max(0.001);
+    let snapshots_per_bucket = f64::round(bucket_duration_secs / snapshot_interval_secs) as usize;
+    if snapshots_per_bucket == 0 {
+        return format!("Snapshot interval too large for bucketing: {} ms", cfg.interval_ms);
+    }
+
+    // We want to show the most recent `num_buckets` buckets.
+    // So we need at least `num_buckets * snapshots_per_bucket` snapshots.
+    let needed_snaps = num_buckets * snapshots_per_bucket;
+    let start_idx = if snaps.len() >= needed_snaps {
+        snaps.len() - needed_snaps
+    } else {
+        0
+    };
+    let relevant_snaps = &snaps[start_idx..];
+
+    // If we have fewer snapshots than needed, we'll adjust the number of buckets to fit the data.
+    let actual_buckets = relevant_snaps.len() / snapshots_per_bucket;
+    if actual_buckets == 0 {
+        return format!(
+            "Not enough data for {} buckets: need at least {} snapshots, have {}",
+            num_buckets,
+            needed_snaps,
+            snaps.len()
+        );
+    }
+
+    // Bucket the data: compute average cpu.total_pct and memory.pct for each bucket,
+    // plus the timestamp of the bucket's first sample for axis labelling.
+    let mut cpu_buckets = Vec::with_capacity(actual_buckets);
+    let mut mem_buckets = Vec::with_capacity(actual_buckets);
+    let mut bucket_times: Vec<&str> = Vec::with_capacity(actual_buckets);
+    for chunk in relevant_snaps.chunks(snapshots_per_bucket) {
+        let cpu_sum: f32 = chunk.iter().map(|s| s.cpu.total_pct).sum();
+        let mem_sum: f64 = chunk.iter().map(|s| s.memory.pct).sum();
+        cpu_buckets.push(cpu_sum / chunk.len() as f32);
+        mem_buckets.push(mem_sum / chunk.len() as f64);
+        bucket_times.push(&chunk[0].timestamp);
+    }
+
+    // Downsample to a display width that fits a typical terminal (80-120 cols).
+    let max_width = 100usize;
+    let width = actual_buckets.min(max_width);
+    let group = actual_buckets.div_ceil(width);
+
+    fn spark_char(v: f64) -> char {
+        let index = ((v.clamp(0.0, 100.0) / 100.0) * 8.0).round() as usize;
+        ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'][index.min(7)]
+    }
+
+    let mut cpu_spark = String::with_capacity(width);
+    let mut mem_spark = String::with_capacity(width);
+    let mut tick_times: Vec<&str> = Vec::with_capacity(width);
+    for g in 0..width {
+        let lo = g * group;
+        let hi = ((g + 1) * group).min(actual_buckets);
+        let cpu_avg: f32 = cpu_buckets[lo..hi].iter().sum::<f32>() / (hi - lo) as f32;
+        let mem_avg: f64 = mem_buckets[lo..hi].iter().sum::<f64>() / (hi - lo) as f64;
+        cpu_spark.push(spark_char(cpu_avg as f64));
+        mem_spark.push(spark_char(mem_avg));
+        tick_times.push(bucket_times[lo]);
+    }
+
+    // Time axis: HH:MM labels spread evenly across the width (5 chars each,
+    // so at most width/6 labels) + day-boundary '|' markers.
+    let mut axis: Vec<char> = vec![' '; width];
+    let n_ticks = (width / 6).max(1).min(tick_times.len());
+    for k in 0..n_ticks {
+        let i = if n_ticks == 1 {
+            tick_times.len() - 1
+        } else {
+            (tick_times.len() - 1) * k / (n_ticks - 1)
+        };
+        let hhmm = tick_times[i].get(11..16).unwrap_or("");
+        let pos = if n_ticks == 1 {
+            width.saturating_sub(5) // right-align the single label
+        } else {
+            (width - 5) * k / (n_ticks - 1)
+        };
+        for (j, ch) in hhmm.chars().enumerate() {
+            if pos + j < width {
+                axis[pos + j] = ch;
+            }
+        }
+    }
+    // Day boundary markers.
+    for i in 1..width {
+        if tick_times[i].get(..10) != tick_times[i - 1].get(..10) && axis[i - 1] == ' ' {
+            axis[i - 1] = '|';
+        }
+    }
+    // Trim trailing blanks.
+    while axis.last() == Some(&' ') {
+        axis.pop();
+    }
+    let axis_line: String = axis.into_iter().collect();
+
+    // Date legend: distinct dates present in the window.
+    let mut dates: Vec<&str> = Vec::new();
+    for tt in &bucket_times {
+        let d = &tt[..10];
+        if dates.last() != Some(&d) {
+            dates.push(d);
+        }
+    }
+
+    // Build the output string.
+    let mut out = String::new();
+    out.push_str(&format!(
+        " History: {} \u{b7} {} ({} buckets of {}s) | 2=24h 7=7d d=day q=live
+",
+        match history_state.range {
+            HistoryRange::TwentyFourHours => "24h",
+            HistoryRange::SevenDays => "7d",
+        },
+        match &history_state.selected_date {
+            Some(date) => format!("date {}", date),
+            None => "all days".to_string(),
+        },
+        actual_buckets,
+        bucket_duration_secs as u64
+    ));
+    out.push_str(&format!(" CPU {}
+", cpu_spark));
+    out.push_str(&format!(" MEM {}
+", mem_spark));
+    out.push_str(&format!("     {}
+", axis_line));
+    out.push_str(&format!("     dates: {}
+", dates.join(" ")));
+    out
 }

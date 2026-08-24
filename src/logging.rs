@@ -12,7 +12,7 @@ use crate::stats::Snapshot;
 /// 2. %PROGRAMDATA%/syswatch/logs when running as a Windows service
 ///    (LocalSystem has no LOCALAPPDATA pointing at the user profile)
 /// 3. %LOCALAPPDATA%/syswatch/logs for interactive runs
-fn log_dir() -> Option<PathBuf> {
+pub(crate) fn log_dir() -> Option<PathBuf> {
     if let Ok(dir) = std::env::var("SYSWATCH_LOG_DIR") {
         return Some(PathBuf::from(dir));
     }
@@ -27,6 +27,27 @@ fn log_dir() -> Option<PathBuf> {
         .map(PathBuf::from)
         .or_else(|| dirs_home().map(|h| h.join("AppData").join("Local")))?;
     Some(base.join("syswatch").join("logs"))
+}
+
+/// All candidate log directories (service + interactive), deduplicated.
+/// Used by the history view so it sees data from both the service
+/// (%PROGRAMDATA%) and interactive --log runs (%LOCALAPPDATA%).
+pub(crate) fn log_dirs() -> Vec<PathBuf> {
+    let mut dirs: Vec<PathBuf> = Vec::new();
+    if let Ok(dir) = std::env::var("SYSWATCH_LOG_DIR") {
+        dirs.push(PathBuf::from(dir));
+    }
+    if let Ok(pd) = std::env::var("PROGRAMDATA") {
+        dirs.push(PathBuf::from(pd).join("syswatch").join("logs"));
+    }
+    if let Ok(la) = std::env::var("LOCALAPPDATA") {
+        dirs.push(PathBuf::from(la).join("syswatch").join("logs"));
+    } else if let Some(h) = dirs_home() {
+        dirs.push(h.join("AppData").join("Local").join("syswatch").join("logs"));
+    }
+    dirs.sort();
+    dirs.dedup();
+    dirs
 }
 
 /// Delete log files older than `retention_days` (by modification time).

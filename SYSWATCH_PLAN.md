@@ -41,6 +41,6 @@ FinTrack v1.2 testing runs alongside — do not block each other; agents split b
 ## Agent task queue (Pi fleet, one bounded task each)
 T1: Rust --log mode + pruning (acceptance: unit test for rotation/prune)
 T2: windows-service wrapper + install cmds (acceptance: sc query shows service after install)
-T3: history loading + graph rendering in TUI (acceptance: cargo test + manual screenshot)
+T3: history loading + graph rendering in TUI (acceptance: cargo test + manual screenshot) ✅ DONE 2026-08-24 — h=history, 2=24h, 7=7d, d=day cycle, q=live; data-driven bucketing
 T4: Flutter skeleton + battery dashboard (acceptance: flutter build apk succeeds)
 T5: per-app battery research spike (output: feasibility doc in repo docs/)
