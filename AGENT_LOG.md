@@ -19,3 +19,8 @@
 - dashboard/server.py: widget pin toggle + up/down reorder buttons, order+pinned persisted to localStorage ('syswatch_widgets'), pinned-first on load. Client-side only.
 - Verified: py_compile OK, live server curl 200 + grep hit. Committed dfdd495, pushed master.
 - Note: worker exited 0 after edit without committing (silent-exit pattern) — mediator committed.
+
+### 2026-08-25 04:5x IST — DESIGN v1 dashboard build (ox-alpha, verified 9/10)
+- Worker stealth/ox-alpha (one shot): all 6 items — loading/error states, 10m-7d time pills driving ALL charts, bezier curves, iStat nav (Overview|CPU|Network|RAM|Processes|Logs), logs filter wiring, temp tile with sensor autodetect (no-sensor state when absent).
+- Mediator verified: py_compile OK; temp-instance test of /api/history?range= across all 10 ranges → 200 + consistent series (temp array incl.); HTML contains nav sections, quadraticCurveTo, 10m/7d pills, loading states. Restarted live :8787 server with new code (old PID killed); curl / + latest + 10m + 7d = 200.
+- Committed 25ead21, pushed master. NOTE: /api/latest has no temperature_c → tile correctly shows "no sensor" (nothing fabricated).
