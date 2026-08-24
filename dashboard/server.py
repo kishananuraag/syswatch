@@ -53,6 +53,10 @@ HTML = """<!DOCTYPE html>
   .logs-panel { display:none; }
   #logfilter { width:260px; max-width:100%; background:var(--bg); border:1px solid var(--border);
                color:var(--fg); border-radius:6px; padding:5px 9px; font-size:13px; margin-bottom:10px; }
+  .wbtn { background:none; border:1px solid var(--border); color:var(--dim); border-radius:4px;
+          cursor:pointer; font-size:11px; padding:1px 6px; margin-left:4px; }
+  .wbtn:hover { color:var(--fg); }
+  .wbtn.pinned { color:var(--accent); border-color:var(--accent); }
   #loglines { background:#010409; border:1px solid var(--border); border-radius:8px; padding:12px;
               font:12px/1.6 Consolas,Menlo,monospace; color:var(--dim); white-space:pre-wrap;
               word-break:break-all; height:60vh; overflow-y:auto; }
@@ -66,31 +70,66 @@ HTML = """<!DOCTYPE html>
   <a id="tab-logs" onclick="showTab('logs')">Logs</a>
 </nav>
 <div class="grid" id="overview">
-  <div class="card"><h2>CPU total</h2>
+  <div class="card" id="w-cpu"><h2>CPU total</h2>
     <div class="big" id="cpuBig">–<span class="unit">%</span></div>
     <canvas id="cpuChart"></canvas></div>
-  <div class="card" style="grid-column:1/-1"><h2>CPU per core</h2><div id="cores"></div></div>
-  <div class="card"><h2>Memory</h2>
+  <div class="card" id="w-cores" style="grid-column:1/-1"><h2>CPU per core</h2><div id="cores"></div></div>
+  <div class="card" id="w-mem"><h2>Memory</h2>
     <div class="big" id="ramBig">–<span class="unit">%</span></div>
     <div class="barwrap"><div class="barfill" id="ramBar"></div></div>
     <canvas id="ramChart"></canvas></div>
-  <div class="card"><h2>Network rx/tx</h2>
+  <div class="card" id="w-net"><h2>Network rx/tx</h2>
     <div class="big" id="netBig" style="font-size:24px">–</div>
     <canvas id="netChart"></canvas></div>
-  <div class="card"><h2>Disks / Temperature / Uptime</h2>
+  <div class="card" id="w-disks"><h2>Disks / Temperature / Uptime</h2>
     <div class="disks" id="disks"></div>
     <div id="temp" class="temp" style="margin-top:6px"></div>
     <div id="uptime" style="margin-top:6px;color:var(--dim)"></div></div>
-  <div class="card" style="grid-column:1/-1"><h2>Top processes by CPU</h2>
+  <div class="card" id="w-procs" style="grid-column:1/-1"><h2>Top processes by CPU</h2>
     <table><thead><tr><th>PID</th><th>Name</th><th style="text-align:right">CPU %</th><th style="text-align:right">Mem MB</th></tr></thead>
     <tbody id="procs"></tbody></table></div>
-  <div class="card" style="grid-column:1/-1"><h2>Alerts</h2><div id="alerts">loading…</div></div>
+  <div class="card" id="w-alerts" style="grid-column:1/-1"><h2>Alerts</h2><div id="alerts">loading…</div></div>
 </div>
 <div class="logs-panel" id="logsPanel">
   <input id="logfilter" placeholder="filter logs…" oninput="loadLogs()">
   <pre id="loglines">loading…</pre>
 </div>
 <script>
+// ---- widget pin/reorder (localStorage 'syswatch_widgets') ----
+const WKEY='syswatch_widgets';
+function loadWidgetState(){ try{ return JSON.parse(localStorage.getItem(WKEY))||{}; }catch(e){ return {}; } }
+function saveWidgetState(s){ try{ localStorage.setItem(WKEY,JSON.stringify(s)); }catch(e){} }
+function persistWidgets(){ const g=document.getElementById('overview');
+  saveWidgetState({order:[...g.children].map(c=>c.id),
+                   pinned:Object.fromEntries([...g.children].filter(c=>c.dataset.pinned).map(c=>[c.id,1]))}); }
+function moveWidget(card,dir){ const g=document.getElementById('overview');
+  const kids=[...g.children], i=kids.indexOf(card), j=i+dir;
+  if(j<0||j>=kids.length) return;
+  const pinnedFirst=kids.filter(k=>k.dataset.pinned), rest=kids.filter(k=>!k.dataset.pinned);
+  const arr=card.dataset.pinned?pinnedFirst:rest;
+  const ai=arr.indexOf(card); arr.splice(ai,1); arr.splice(Math.min(Math.max(ai+dir,0),arr.length),0,card);
+  [...pinnedFirst,...rest].forEach(k=>g.appendChild(k)); persistWidgets(); }
+function togglePin(card){ card.dataset.pinned=card.dataset.pinned?'':'1';
+  card.querySelector('.wpin').classList.toggle('pinned',!!card.dataset.pinned); persistWidgets(); }
+function initWidgets(){ const st=loadWidgetState(), g=document.getElementById('overview');
+  const cards=[...g.children];
+  cards.forEach(card=>{
+    if(st.pinned&&st.pinned[card.id]) card.dataset.pinned='1';
+    const h=card.querySelector('h2');
+    const pin=document.createElement('button'); pin.className='wbtn wpin'+(card.dataset.pinned?' pinned':'');
+    pin.textContent='pin'; pin.title='Pin widget'; pin.onclick=()=>togglePin(card);
+    const up=document.createElement('button'); up.className='wbtn'; up.textContent='↑'; up.title='Move up'; up.onclick=()=>moveWidget(card,-1);
+    const dn=document.createElement('button'); dn.className='wbtn'; dn.textContent='↓'; dn.title='Move down'; dn.onclick=()=>moveWidget(card,1);
+    h.append(pin,up,dn); });
+  if(Array.isArray(st.order)){
+    const pinned=[],rest=[];
+    for(const id of st.order){ const c=document.getElementById(id); if(!c) continue; (c.dataset.pinned?pinned:rest).push(c); }
+    cards.forEach(c=>{ if(!pinned.includes(c)&&!rest.includes(c)) (c.dataset.pinned?pinned:rest).push(c); });
+    [...pinned,...rest].forEach(c=>g.appendChild(c));
+  } else {
+    cards.filter(c=>c.dataset.pinned).forEach(c=>g.appendChild(c));
+  } }
+initWidgets();
 const RANGES = {'1h':3600e3,'6h':21600e3,'24h':86400e3,'7d':604800e3};
 let range = '1h';
 function fmtBps(v){ if(v==null) return '–'; const u=['bps','Kbps','Mbps','Gbps']; let i=0;
