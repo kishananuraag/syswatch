@@ -1,1 +1,7 @@
 /target
+
+# local agent session transcripts — never commit
+.pi-sessions/
+*.jsonl
+*.log
+logs/
