@@ -23,6 +23,9 @@ mod imp {
     /// Entry point invoked by the SCM. Parses argv (unused) and starts the loop.
     fn my_service_main(args: Vec<OsString>) {
         let _ = args;
+        // LocalSystem has no user LOCALAPPDATA; force PROGRAMDATA logs.
+        // SAFETY: single-threaded at this point in service startup; no racing reads.
+        unsafe { std::env::set_var("SYSWATCH_SERVICE", "1") };
         run_service_loop();
     }
 

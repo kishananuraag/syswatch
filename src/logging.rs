@@ -7,7 +7,21 @@ use std::path::PathBuf;
 use crate::config::dirs_home;
 use crate::stats::Snapshot;
 
+/// Resolve the log directory once. Order of preference:
+/// 1. SYSWATCH_LOG_DIR env var (explicit override, also set by service.rs)
+/// 2. %PROGRAMDATA%/syswatch/logs when running as a Windows service
+///    (LocalSystem has no LOCALAPPDATA pointing at the user profile)
+/// 3. %LOCALAPPDATA%/syswatch/logs for interactive runs
 fn log_dir() -> Option<PathBuf> {
+    if let Ok(dir) = std::env::var("SYSWATCH_LOG_DIR") {
+        return Some(PathBuf::from(dir));
+    }
+    if std::env::var("SYSWATCH_SERVICE").is_ok() {
+        return std::env::var("PROGRAMDATA")
+            .ok()
+            .map(PathBuf::from)
+            .map(|b| b.join("syswatch").join("logs"));
+    }
     let base = std::env::var("LOCALAPPDATA")
         .ok()
         .map(PathBuf::from)
