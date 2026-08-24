@@ -17,11 +17,17 @@ pub struct Snapshot {
     pub temperature: Option<f32>,
     pub disks: Vec<Disk>,
     pub networks: Vec<Net>,
-    /// Top processes by CPU usage.
-    pub top_by_cpu: Vec<ProcRow>,
-    /// Top processes by resident memory.
-    pub top_by_mem: Vec<ProcRow>,
+    /// Top processes by CPU usage and by memory.
+    pub processes: Processes,
     pub process_count: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct Processes {
+    /// Top processes by CPU usage.
+    pub by_cpu: Vec<ProcRow>,
+    /// Top processes by resident memory.
+    pub by_mem: Vec<ProcRow>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -75,6 +81,7 @@ pub struct Collector {
     components: Option<Components>,
     prev_net: HashMap<String, (u64, u64)>,
     prev_instant: Instant,
+    last_cpu_refresh: Instant,
     top_n: usize,
 }
 
@@ -87,6 +94,7 @@ impl Collector {
             components: Components::new_with_refreshed_list().into(),
             prev_net: HashMap::new(),
             prev_instant: Instant::now(),
+            last_cpu_refresh: Instant::now(),
             top_n,
         };
         c.sys.refresh_all();
@@ -95,6 +103,7 @@ impl Collector {
         c.sys.refresh_cpu_all();
         c.snapshot_network_counters();
         c.prev_instant = Instant::now();
+        c.last_cpu_refresh = Instant::now();
         c
     }
 
@@ -109,7 +118,16 @@ impl Collector {
     }
 
     pub fn refresh(&mut self) {
+        // sysinfo computes CPU usage as the delta between consecutive CPU
+        // refreshes. If they happen back-to-back the delta window is ~0 ms and
+        // usage gets reported as a bogus constant 100%. Enforce the minimum
+        // interval between CPU refreshes.
+        let since_last = self.last_cpu_refresh.elapsed();
+        if since_last < sysinfo::MINIMUM_CPU_UPDATE_INTERVAL {
+            std::thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL - since_last);
+        }
         self.sys.refresh_all();
+        self.last_cpu_refresh = Instant::now();
         self.networks.refresh(true);
         self.disks.refresh(true);
     }
@@ -232,8 +250,10 @@ impl Collector {
             },
             disks,
             networks,
-            top_by_cpu: by_cpu.into_iter().take(self.top_n).collect(),
-            top_by_mem: by_mem.into_iter().take(self.top_n).collect(),
+            processes: Processes {
+                by_cpu: by_cpu.into_iter().take(self.top_n).collect(),
+                by_mem: by_mem.into_iter().take(self.top_n).collect(),
+            },
             process_count,
         }
     }

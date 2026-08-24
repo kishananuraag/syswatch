@@ -91,5 +91,7 @@ pub fn run() {
         std::thread::sleep(std::time::Duration::from_millis(cfg.interval_ms));
     }
 
-    ui::cleanup();
+    if !cli.json {
+        ui::cleanup();
+    }
 }

@@ -229,11 +229,11 @@ pub fn render(snap: &Snapshot, cfg: &Config, tick: u64) -> String {
             "  {:<22}{:>7}{:>7}{:>9}   {:<22}{:>7}{:>7}{:>9}",
             "NAME(CPU)", "PID", "CPU%", "MEM", "NAME(MEM)", "PID", "CPU%", "MEM"
         )));
-        let n = cfg.top_n.min(snap.top_by_cpu.len());
+        let n = cfg.top_n.min(snap.processes.by_cpu.len());
         for i in 0..n {
             add!(
                 " {}",
-                fmt_proc_pair(snap.top_by_cpu.get(i), snap.top_by_mem.get(i),)
+                fmt_proc_pair(snap.processes.by_cpu.get(i), snap.processes.by_mem.get(i),)
             );
         }
     }
