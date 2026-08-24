@@ -1,0 +1,14 @@
+[
+  {
+    "metric": "cpu_total",
+    "op": ">",
+    "value": 90,
+    "duration_secs": 300
+  },
+  {
+    "metric": "ram_pct",
+    "op": ">",
+    "value": 90,
+    "duration_secs": 600
+  }
+]

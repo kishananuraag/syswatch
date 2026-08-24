@@ -6,6 +6,8 @@ from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
+import alerts
+
 LOGS_DIR = os.environ.get("SYSWATCH_LOGS", r"C:\ProgramData\syswatch\logs")
 PORT = 8787
 MAX_POINTS = 720
@@ -40,15 +42,34 @@ HTML = """<!DOCTYPE html>
   .disks div { margin:4px 0; font-size:13px; }
   .temp { color:var(--yellow); }
   #status { float:right; color:var(--dim); font-size:12px; }
+  nav { margin-bottom:14px; }
+  nav a { color:var(--dim); text-decoration:none; margin-right:16px; font-size:13px;
+          cursor:pointer; padding-bottom:2px; }
+  nav a.active { color:var(--fg); border-bottom:2px solid var(--accent); }
+  .core { display:grid; grid-template-columns:34px 1fr 40px; gap:8px; align-items:center;
+          margin:4px 0; font-size:12px; color:var(--dim); }
+  .core .barwrap { height:10px; margin-top:0; }
+  .coreval { text-align:right; color:var(--fg); font-variant-numeric:tabular-nums; }
+  .logs-panel { display:none; }
+  #logfilter { width:260px; max-width:100%; background:var(--bg); border:1px solid var(--border);
+               color:var(--fg); border-radius:6px; padding:5px 9px; font-size:13px; margin-bottom:10px; }
+  #loglines { background:#010409; border:1px solid var(--border); border-radius:8px; padding:12px;
+              font:12px/1.6 Consolas,Menlo,monospace; color:var(--dim); white-space:pre-wrap;
+              word-break:break-all; height:60vh; overflow-y:auto; }
 </style>
 </head>
 <body>
 <div><h1>syswatch <span id="status">loading…</span></h1>
 <div class="sub" id="sub"></div></div>
-<div class="grid">
+<nav>
+  <a id="tab-overview" class="active" onclick="showTab('overview')">Overview</a>
+  <a id="tab-logs" onclick="showTab('logs')">Logs</a>
+</nav>
+<div class="grid" id="overview">
   <div class="card"><h2>CPU total</h2>
     <div class="big" id="cpuBig">–<span class="unit">%</span></div>
     <canvas id="cpuChart"></canvas></div>
+  <div class="card" style="grid-column:1/-1"><h2>CPU per core</h2><div id="cores"></div></div>
   <div class="card"><h2>Memory</h2>
     <div class="big" id="ramBig">–<span class="unit">%</span></div>
     <div class="barwrap"><div class="barfill" id="ramBar"></div></div>
@@ -63,6 +84,11 @@ HTML = """<!DOCTYPE html>
   <div class="card" style="grid-column:1/-1"><h2>Top processes by CPU</h2>
     <table><thead><tr><th>PID</th><th>Name</th><th style="text-align:right">CPU %</th><th style="text-align:right">Mem MB</th></tr></thead>
     <tbody id="procs"></tbody></table></div>
+  <div class="card" style="grid-column:1/-1"><h2>Alerts</h2><div id="alerts">loading…</div></div>
+</div>
+<div class="logs-panel" id="logsPanel">
+  <input id="logfilter" placeholder="filter logs…" oninput="loadLogs()">
+  <pre id="loglines">loading…</pre>
 </div>
 <script>
 const RANGES = {'1h':3600e3,'6h':21600e3,'24h':86400e3,'7d':604800e3};
@@ -90,9 +116,9 @@ function draw(id, series, opts){
 }
 async function refresh(){
   try{
-    const [lr,hr]=await Promise.all([fetch('/api/latest'),fetch('/api/history?range='+range)]);
-    if(!lr.ok||!hr.ok) throw 0;
-    const d=await lr.json(), hist=await hr.json();
+    const [lr,hr,ar]=await Promise.all([fetch('/api/latest'),fetch('/api/history?range='+range),fetch('/api/alerts')]);
+    if(!lr.ok||!hr.ok||!ar.ok) throw 0;
+    const d=await lr.json(), hist=await hr.json(), al=await ar.json();
     document.getElementById('cpuBig').innerHTML=d.cpu.total_pct.toFixed(1)+'<span class="unit">%</span>';
     document.getElementById('ramBig').innerHTML=d.memory.pct.toFixed(1)+'<span class="unit">%</span>';
     document.getElementById('ramBar').style.width=Math.min(d.memory.pct,100)+'%';
@@ -103,15 +129,37 @@ async function refresh(){
     draw('netChart',[{data:hist.rx},{data:hist.tx}],{});
     document.getElementById('disks').innerHTML=(d.disks||[]).map(k=>
       `<div>${k.mount} — ${k.used_pct.toFixed(1)}% used (${k.free_gb.toFixed(0)} GB free of ${k.total_gb.toFixed(0)} GB)</div>`).join('');
+    document.getElementById('cores').innerHTML=(d.cpu.per_core_pct||[]).map((p,i)=>
+      `<div class="core"><span>C${i}</span><div class="barwrap"><div class="barfill" style="width:${Math.min(p,100).toFixed(1)}%"></div></div><span class="coreval">${Math.round(p)}%</span></div>`).join('');
     document.getElementById('temp').textContent = d.temperature_c!=null ? '🌡 '+(Array.isArray(d.temperature_c)?d.temperature_c.join(', '):d.temperature_c)+' °C' : '';
     document.getElementById('uptime').textContent='uptime: '+fmtUp(d.uptime_secs||0)+' · '+d.process_count+' processes · '+hist.points.length+' points ('+range+')';
     document.getElementById('procs').innerHTML=(d.processes.by_cpu||[]).map(p=>
       `<tr><td>${p.pid}</td><td>${p.name}</td><td class="num">${p.cpu_pct.toFixed(1)}</td><td class="num">${p.mem_mb.toFixed(0)}</td></tr>`).join('');
+    document.getElementById('alerts').innerHTML=(al.rules||[]).map(r=>{
+      const last=r.last_fired?new Date(r.last_fired).toLocaleTimeString():'never';
+      return `<div>${r.metric} ${r.op} ${r.value} for ${r.duration_secs}s — last fired: ${last}</div>`; }).join('')||'no alert rules';
     document.getElementById('status').textContent='updated '+new Date().toLocaleTimeString();
     document.getElementById('sub').textContent='latest snapshot: '+d.timestamp;
   }catch(e){ document.getElementById('status').textContent='error fetching data'; }
 }
-setInterval(refresh,5000); refresh();
+let currentTab='overview';
+function showTab(t){ currentTab=t;
+  document.getElementById('overview').style.display=t==='overview'?'grid':'none';
+  document.getElementById('logsPanel').style.display=t==='logs'?'block':'none';
+  document.getElementById('tab-overview').classList.toggle('active',t==='overview');
+  document.getElementById('tab-logs').classList.toggle('active',t==='logs');
+  if(t==='logs') loadLogs(); }
+async function loadLogs(){
+  if(currentTab!=='logs') return;
+  const f=document.getElementById('logfilter').value.trim();
+  try{
+    const r=await fetch('/api/logs?limit=100&filter='+encodeURIComponent(f));
+    if(!r.ok) throw 0;
+    const d=await r.json();
+    document.getElementById('loglines').textContent=(d.lines||[]).join('\n')||'(no matching lines)';
+  }catch(e){ document.getElementById('loglines').textContent='error fetching logs'; }
+}
+setInterval(refresh,5000); setInterval(loadLogs,5000); refresh(); loadLogs();
 </script>
 </body>
 </html>"""
@@ -152,6 +200,43 @@ def net_totals(snap):
     rx = sum(n.get("rx_bps") or 0 for n in snap.get("networks") or [])
     tx = sum(n.get("tx_bps") or 0 for n in snap.get("networks") or [])
     return rx, tx
+
+
+def fmt_rate(bps):
+    bps = bps or 0
+    if bps >= 1_000_000:
+        return "%.1fMB/s" % (bps / 1_000_000)
+    if bps >= 1_000:
+        return "%.1fKB/s" % (bps / 1_000)
+    return "%.0fB/s" % bps
+
+
+def render_log_line(snap):
+    t = "--:--"
+    ts = parse_ts(snap.get("timestamp"))
+    if ts and ts.tzinfo:
+        t = ts.astimezone().strftime("%H:%M")
+    cpu = (snap.get("cpu") or {}).get("total_pct")
+    ram = (snap.get("memory") or {}).get("pct")
+    rx, _ = net_totals(snap)
+    ndisks = len(snap.get("disks") or [])
+    procs = (snap.get("processes") or {}).get("by_cpu") or []
+    parts = [t, "CPU %d%%" % round(cpu or 0), "RAM %d%%" % round(ram or 0),
+             "rx %s" % fmt_rate(rx), "%d disk%s" % (ndisks, "s" if ndisks != 1 else "")]
+    if procs:
+        top = procs[0]
+        parts.append("top: %s %dMB" % (top.get("name"), round(top.get("mem_mb") or 0)))
+    return " · ".join(parts)
+
+
+def build_logs(snaps, filt, limit):
+    lines = []
+    for s in snaps:
+        line = render_log_line(s)
+        if filt and filt.lower() not in line.lower():
+            continue
+        lines.append(line)
+    return lines[-limit:]
 
 
 def build_history(snaps, range_key):
@@ -238,6 +323,18 @@ class Handler(BaseHTTPRequestHandler):
             hist = build_history(load_snapshots(), rng)
             hist.pop("points")
             self._send(200, json.dumps(hist).encode())
+        elif url.path == "/api/alerts":
+            self._send(200, json.dumps(alerts.state()).encode())
+        elif url.path == "/api/logs":
+            qs = parse_qs(url.query)
+            filt = (qs.get("filter") or [""])[0]
+            try:
+                limit = int((qs.get("limit") or ["100"])[0])
+            except ValueError:
+                limit = 100
+            limit = max(1, min(limit, 5000))
+            lines = build_logs(load_snapshots(), filt, limit)
+            self._send(200, json.dumps({"lines": lines}).encode())
         else:
             self._send(404, b'{"error":"not found"}')
 
@@ -246,6 +343,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
+    alerts.start_alerter()
     srv = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
     print(f"SYSWATCH_DASHBOARD_READY on port {PORT}", flush=True)
     srv.serve_forever()
