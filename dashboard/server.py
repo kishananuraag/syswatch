@@ -234,13 +234,21 @@ async function refresh(){
     }
     if(!lr.ok||!hr.ok||!ar.ok) throw 0;
     lastD=await lr.json(); lastHist=await hr.json(); lastAl=await ar.json();
-    renderAll();
+    document.getElementById('status').textContent='updating…';
+    renderAllSafe();
     document.getElementById('status').textContent='updated '+new Date().toLocaleTimeString();
     document.getElementById('sub').textContent='latest snapshot: '+lastD.timestamp;
   }catch(e){
     document.getElementById('status').innerHTML=
       '<span style="color:var(--red)">error fetching data</span> · <a href="#" onclick="refresh();return false" style="color:var(--accent)">retry</a>';
   }
+}
+function renderAllSafe(){
+  try{ renderAll(); }
+  catch(e){ console.error('render error',e);
+    document.getElementById('status').innerHTML=
+      '<span style="color:var(--yellow)">render error</span> · <a href="#" onclick="refresh();return false" style="color:var(--accent)">retry</a>'; }
+}
 }
 function renderAll(){
   const d=lastD,hist=lastHist,al=lastAl;
@@ -275,7 +283,7 @@ function renderAll(){
   const coresHtml=((d.cpu&&d.cpu.per_core_pct)||[]).map((p,i)=>
     `<div class="core"><span>C${i}</span><div class="barwrap"><div class="barfill" style="width:${Math.min(p,100).toFixed(1)}%"></div></div><span class="coreval">${Math.round(p)}%</span></div>`).join('')||'<span class="empty">waiting for data…</span>';
   set('cores',coresHtml); set('coresDetail',coresHtml);
-  document.getElementById('uptime').textContent='uptime: '+fmtUp(d.uptime_secs||0)+' · '+(d.process_count||0)+' processes · '+hist.points.length+' points ('+range+')';
+  document.getElementById('uptime').textContent='uptime: '+fmtUp(d.uptime_secs||0)+' · '+(d.process_count||0)+' processes · '+(hist.labels||[]).length+' points ('+range+')';
   const procRow=p=>`<tr><td>${p.pid}</td><td>${p.name}</td><td class="num">${(p.cpu_pct||0).toFixed(1)}</td><td class="num">${(p.mem_mb||0).toFixed(0)}</td></tr>`;
   const byCpu=(d.processes&&d.processes.by_cpu)||[];
   const noProc='<tr><td colspan="4" class="empty">waiting for data…</td></tr>';
@@ -301,7 +309,7 @@ function showTab(t){ currentTab=t;
     el.style.display=k===t?(k==='overview'?'grid':'block'):'none';
   }
   document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('active',a.id==='tab-'+t));
-  if(t==='logs') loadLogs(); else renderAll(); }
+  if(t==='logs') loadLogs(); else renderAllSafe(); }
 async function loadLogs(){
   if(currentTab!=='logs') return;
   const f=document.getElementById('logfilter').value.trim();
