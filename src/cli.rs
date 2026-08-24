@@ -42,6 +42,28 @@ pub struct Cli {
     /// Hide specific panels (repeatable): cpu, ram, disk, net, proc.
     #[arg(long = "hide", value_name = "PANEL")]
     pub hide: Vec<String>,
+
+    #[command(subcommand)]
+    pub command: Option<Command>,
+}
+
+#[derive(clap::Subcommand, Debug)]
+pub enum Command {
+    /// Manage the Windows service named 'syswatch'.
+    Service {
+        #[command(subcommand)]
+        action: ServiceAction,
+    },
+}
+
+#[derive(clap::Subcommand, Debug)]
+pub enum ServiceAction {
+    /// Register the syswatch service (auto-start).
+    Install,
+    /// Remove the syswatch service.
+    Uninstall,
+    /// Run the service entrypoint (sampling + logging loop).
+    Run,
 }
 
 /// Apply --hide flags on top of a loaded config.
@@ -63,6 +85,15 @@ pub fn apply_hides(cfg: &mut Config, cli: &Cli) {
 
 pub fn run() {
     let cli = Cli::parse();
+
+    if let Some(crate::cli::Command::Service { action }) = &cli.command {
+        match action {
+            ServiceAction::Install => crate::service::install(),
+            ServiceAction::Uninstall => crate::service::uninstall(),
+            ServiceAction::Run => crate::service::run_service(),
+        }
+        return;
+    }
     let mut cfg = Config::load(&cli);
     apply_hides(&mut cfg, &cli);
 
