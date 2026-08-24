@@ -50,7 +50,14 @@ HTML = """<!DOCTYPE html>
           margin:4px 0; font-size:12px; color:var(--dim); }
   .core .barwrap { height:10px; margin-top:0; }
   .coreval { text-align:right; color:var(--fg); font-variant-numeric:tabular-nums; }
-  .logs-panel { display:none; }
+  .panel { display:none; margin-bottom:14px; }
+  .panel .card { margin-bottom:14px; }
+  #rangebar { display:inline-flex; gap:4px; text-transform:none; letter-spacing:0; font-weight:400; }
+  #rangebar button { background:none; border:1px solid var(--border); color:var(--dim);
+                     border-radius:10px; font-size:11px; padding:1px 8px; cursor:pointer; }
+  #rangebar button:hover { color:var(--fg); }
+  #rangebar button.active { color:var(--bg); background:var(--accent); border-color:var(--accent); }
+  .empty { color:var(--dim); font-style:italic; font-weight:400; text-transform:none; letter-spacing:0; }
   #logfilter { width:260px; max-width:100%; background:var(--bg); border:1px solid var(--border);
                color:var(--fg); border-radius:6px; padding:5px 9px; font-size:13px; margin-bottom:10px; }
   .wbtn { background:none; border:1px solid var(--border); color:var(--dim); border-radius:4px;
@@ -67,10 +74,14 @@ HTML = """<!DOCTYPE html>
 <div class="sub" id="sub"></div></div>
 <nav>
   <a id="tab-overview" class="active" onclick="showTab('overview')">Overview</a>
+  <a id="tab-cpu" onclick="showTab('cpu')">CPU</a>
+  <a id="tab-network" onclick="showTab('network')">Network</a>
+  <a id="tab-ram" onclick="showTab('ram')">RAM</a>
+  <a id="tab-processes" onclick="showTab('processes')">Processes</a>
   <a id="tab-logs" onclick="showTab('logs')">Logs</a>
 </nav>
 <div class="grid" id="overview">
-  <div class="card" id="w-cpu"><h2>CPU total</h2>
+  <div class="card" id="w-cpu"><h2 style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">CPU total <span id="rangebar"></span></h2>
     <div class="big" id="cpuBig">–<span class="unit">%</span></div>
     <canvas id="cpuChart"></canvas></div>
   <div class="card" id="w-cores" style="grid-column:1/-1"><h2>CPU per core</h2><div id="cores"></div></div>
@@ -81,16 +92,42 @@ HTML = """<!DOCTYPE html>
   <div class="card" id="w-net"><h2>Network rx/tx</h2>
     <div class="big" id="netBig" style="font-size:24px">–</div>
     <canvas id="netChart"></canvas></div>
-  <div class="card" id="w-disks"><h2>Disks / Temperature / Uptime</h2>
+  <div class="card" id="w-temp"><h2>Temperature</h2>
+    <div class="big" id="tempBig" style="font-size:26px">–</div>
+    <canvas id="tempChart"></canvas></div>
+  <div class="card" id="w-disks"><h2>Disks / Uptime</h2>
     <div class="disks" id="disks"></div>
-    <div id="temp" class="temp" style="margin-top:6px"></div>
     <div id="uptime" style="margin-top:6px;color:var(--dim)"></div></div>
   <div class="card" id="w-procs" style="grid-column:1/-1"><h2>Top processes by CPU</h2>
     <table><thead><tr><th>PID</th><th>Name</th><th style="text-align:right">CPU %</th><th style="text-align:right">Mem MB</th></tr></thead>
     <tbody id="procs"></tbody></table></div>
   <div class="card" id="w-alerts" style="grid-column:1/-1"><h2>Alerts</h2><div id="alerts">loading…</div></div>
 </div>
-<div class="logs-panel" id="logsPanel">
+<div class="panel" id="cpuPanel">
+  <div class="card"><h2>CPU total % — history</h2><canvas id="cpuChartLg" style="height:220px"></canvas></div>
+  <div class="card"><h2>CPU per core</h2><div id="coresDetail"></div></div>
+</div>
+<div class="panel" id="networkPanel">
+  <div class="card"><h2>Network ↓ rx / ↑ tx — history</h2><canvas id="netChartLg" style="height:220px"></canvas></div>
+  <div class="card"><h2>Interfaces</h2>
+    <table><thead><tr><th>Interface</th><th style="text-align:right">Rx</th><th style="text-align:right">Tx</th></tr></thead>
+    <tbody id="ifaces"><tr><td colspan="3" class="empty">waiting for data…</td></tr></tbody></table></div>
+</div>
+<div class="panel" id="ramPanel">
+  <div class="card"><h2>Memory % — history</h2><canvas id="ramChartLg" style="height:220px"></canvas></div>
+  <div class="card"><h2>Top processes by memory</h2>
+    <table><thead><tr><th>PID</th><th>Name</th><th style="text-align:right">CPU %</th><th style="text-align:right">Mem MB</th></tr></thead>
+    <tbody id="memprocs"><tr><td colspan="4" class="empty">waiting for data…</td></tr></tbody></table></div>
+</div>
+<div class="panel" id="processesPanel">
+  <div class="card"><h2>Top processes by CPU</h2>
+    <table><thead><tr><th>PID</th><th>Name</th><th style="text-align:right">CPU %</th><th style="text-align:right">Mem MB</th></tr></thead>
+    <tbody id="procsLg"><tr><td colspan="4" class="empty">waiting for data…</td></tr></tbody></table></div>
+  <div class="card"><h2>Top processes by memory</h2>
+    <table><thead><tr><th>PID</th><th>Name</th><th style="text-align:right">CPU %</th><th style="text-align:right">Mem MB</th></tr></thead>
+    <tbody id="procsMem"><tr><td colspan="4" class="empty">waiting for data…</td></tr></tbody></table></div>
+</div>
+<div class="logs-panel panel" id="logsPanel">
   <input id="logfilter" placeholder="filter logs…" oninput="loadLogs()">
   <pre id="loglines">loading…</pre>
 </div>
@@ -130,8 +167,19 @@ function initWidgets(){ const st=loadWidgetState(), g=document.getElementById('o
     cards.filter(c=>c.dataset.pinned).forEach(c=>g.appendChild(c));
   } }
 initWidgets();
-const RANGES = {'1h':3600e3,'6h':21600e3,'24h':86400e3,'7d':604800e3};
+const RANGES = {'10m':600e3,'15m':900e3,'30m':1800e3,'1h':3600e3,'3h':10800e3,
+                '6h':21600e3,'12h':43200e3,'1d':86400e3,'3d':259200e3,'7d':604800e3};
 let range = '1h';
+(function buildRangeBar(){
+  const bar=document.getElementById('rangebar');
+  Object.keys(RANGES).forEach(function(r){
+    const b=document.createElement('button'); b.textContent=r;
+    if(r===range) b.classList.add('active');
+    b.onclick=function(){ range=r;
+      bar.querySelectorAll('button').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active'); refresh(); };
+    bar.appendChild(b); });
+})();
 function fmtBps(v){ if(v==null) return '–'; const u=['bps','Kbps','Mbps','Gbps']; let i=0;
   while(v>=1000&&i<u.length-1){v/=1000;i++;} return v.toFixed(1)+' '+u[i]; }
 function fmtUp(s){ const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);
@@ -139,55 +187,121 @@ function fmtUp(s){ const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math
 function draw(id, series, opts){
   const c=document.getElementById(id), dpr=window.devicePixelRatio||1;
   const w=c.clientWidth, h=c.clientHeight;
+  if(!w||!h) return; // canvas hidden (inactive tab)
   c.width=w*dpr; c.height=h*dpr;
   const x=c.getContext('2d'); x.scale(dpr,dpr);
   x.clearRect(0,0,w,h);
   const colors=['#58a6ff','#3fb950','#bc8cff'];
   let max=opts.max||1;
   if(!opts.fixedMax) for(const s of series) for(const v of s.data) if(v!=null&&v>max) max=v;
-  for(const s of series){
-    x.strokeStyle=s.color||colors[series.indexOf(s)]; x.lineWidth=1.5; x.beginPath();
-    const n=s.data.length;
-    for(let i=0;i<n;i++){ const v=s.data[i]; if(v==null) continue;
-      const px=n>1?i/(n-1)*w:0, py=h-2-(v/max)*(h-8);
-      i===0||s.data[i-1]==null ? x.moveTo(px,py) : x.lineTo(px,py); }
-    x.stroke(); }
+  let any=false;
+  series.forEach(function(s,si){
+    x.strokeStyle=s.color||colors[si%colors.length];
+    x.lineWidth=1.5; x.lineJoin='round'; x.lineCap='round';
+    const n=s.data.length, run=[];
+    const flushRun=function(){
+      if(!run.length) return;
+      any=true;
+      if(run.length===1){ // isolated point
+        x.beginPath(); x.arc(run[0][0],run[0][1],1.5,0,2*Math.PI);
+        x.fillStyle=x.strokeStyle; x.fill();
+      } else {
+        // smooth bezier: quadratic through midpoints (no pointy spikes)
+        x.beginPath(); x.moveTo(run[0][0],run[0][1]);
+        for(let i=1;i<run.length-1;i++){
+          const mx=(run[i][0]+run[i+1][0])/2, my=(run[i][1]+run[i+1][1])/2;
+          x.quadraticCurveTo(run[i][0],run[i][1],mx,my); }
+        x.lineTo(run[run.length-1][0],run[run.length-1][1]);
+        x.stroke();
+      }
+      run.length=0;
+    };
+    for(let i=0;i<n;i++){ const v=s.data[i];
+      if(v==null){ flushRun(); continue; }
+      run.push([n>1?i/(n-1)*w:0, h-2-(v/max)*(h-8)]); }
+    flushRun();
+  });
+  if(!any){ x.fillStyle='#8b949e'; x.font='italic 12px sans-serif'; x.textAlign='center';
+    x.fillText(opts.empty||'no data in selected range', w/2, h/2); }
 }
+let lastD=null,lastHist=null,lastAl=null;
 async function refresh(){
   try{
     const [lr,hr,ar]=await Promise.all([fetch('/api/latest'),fetch('/api/history?range='+range),fetch('/api/alerts')]);
+    if(lr.status===404||hr.status===404){
+      document.getElementById('status').textContent='waiting for first snapshot…';
+      return;
+    }
     if(!lr.ok||!hr.ok||!ar.ok) throw 0;
-    const d=await lr.json(), hist=await hr.json(), al=await ar.json();
-    document.getElementById('cpuBig').innerHTML=d.cpu.total_pct.toFixed(1)+'<span class="unit">%</span>';
+    lastD=await lr.json(); lastHist=await hr.json(); lastAl=await ar.json();
+    renderAll();
+    document.getElementById('status').textContent='updated '+new Date().toLocaleTimeString();
+    document.getElementById('sub').textContent='latest snapshot: '+lastD.timestamp;
+  }catch(e){
+    document.getElementById('status').innerHTML=
+      '<span style="color:var(--red)">error fetching data</span> · <a href="#" onclick="refresh();return false" style="color:var(--accent)">retry</a>';
+  }
+}
+function renderAll(){
+  const d=lastD,hist=lastHist,al=lastAl;
+  if(!d||!hist) return;
+  const set=function(id,v){ document.getElementById(id).innerHTML=v; };
+  document.getElementById('cpuBig').innerHTML=(d.cpu&&d.cpu.total_pct!=null?d.cpu.total_pct.toFixed(1):'–')+'<span class="unit">%</span>';
+  if(d.memory&&d.memory.pct!=null){
     document.getElementById('ramBig').innerHTML=d.memory.pct.toFixed(1)+'<span class="unit">%</span>';
     document.getElementById('ramBar').style.width=Math.min(d.memory.pct,100)+'%';
-    const rx=d.networks.reduce((a,n)=>a+(n.rx_bps||0),0), tx=d.networks.reduce((a,n)=>a+(n.tx_bps||0),0);
-    document.getElementById('netBig').textContent='↓ '+fmtBps(rx)+'   ↑ '+fmtBps(tx);
-    draw('cpuChart',[{data:hist.cpu}],{max:100,fixedMax:true});
-    draw('ramChart',[{data:hist.ram,color:'#3fb950'}],{max:100,fixedMax:true});
-    draw('netChart',[{data:hist.rx},{data:hist.tx}],{});
-    document.getElementById('disks').innerHTML=(d.disks||[]).map(k=>
-      `<div>${k.mount} — ${k.used_pct.toFixed(1)}% used (${k.free_gb.toFixed(0)} GB free of ${k.total_gb.toFixed(0)} GB)</div>`).join('');
-    document.getElementById('cores').innerHTML=(d.cpu.per_core_pct||[]).map((p,i)=>
-      `<div class="core"><span>C${i}</span><div class="barwrap"><div class="barfill" style="width:${Math.min(p,100).toFixed(1)}%"></div></div><span class="coreval">${Math.round(p)}%</span></div>`).join('');
-    document.getElementById('temp').textContent = d.temperature_c!=null ? '🌡 '+(Array.isArray(d.temperature_c)?d.temperature_c.join(', '):d.temperature_c)+' °C' : '';
-    document.getElementById('uptime').textContent='uptime: '+fmtUp(d.uptime_secs||0)+' · '+d.process_count+' processes · '+hist.points.length+' points ('+range+')';
-    document.getElementById('procs').innerHTML=(d.processes.by_cpu||[]).map(p=>
-      `<tr><td>${p.pid}</td><td>${p.name}</td><td class="num">${p.cpu_pct.toFixed(1)}</td><td class="num">${p.mem_mb.toFixed(0)}</td></tr>`).join('');
-    document.getElementById('alerts').innerHTML=(al.rules||[]).map(r=>{
-      const last=r.last_fired?new Date(r.last_fired).toLocaleTimeString():'never';
-      return `<div>${r.metric} ${r.op} ${r.value} for ${r.duration_secs}s — last fired: ${last}</div>`; }).join('')||'no alert rules';
-    document.getElementById('status').textContent='updated '+new Date().toLocaleTimeString();
-    document.getElementById('sub').textContent='latest snapshot: '+d.timestamp;
-  }catch(e){ document.getElementById('status').textContent='error fetching data'; }
+  } else {
+    document.getElementById('ramBig').innerHTML='–<span class="unit">%</span>';
+  }
+  const nets=d.networks||[];
+  const rx=nets.reduce((a,n)=>a+(n.rx_bps||0),0), tx=nets.reduce((a,n)=>a+(n.tx_bps||0),0);
+  document.getElementById('netBig').textContent='↓ '+fmtBps(rx)+'   ↑ '+fmtBps(tx);
+  draw('cpuChart',[{data:hist.cpu}],{max:100,fixedMax:true});
+  draw('ramChart',[{data:hist.ram,color:'#3fb950'}],{max:100,fixedMax:true});
+  draw('netChart',[{data:hist.rx},{data:hist.tx}],{});
+  // temperature tile — auto-detected sensors only, never fabricated
+  const tc=d.temperature_c;
+  const curTemps=Array.isArray(tc)?tc:(tc!=null?[tc]:[]);
+  const tbig=document.getElementById('tempBig');
+  if(!curTemps.length){ tbig.className='empty'; tbig.style.fontSize='';
+    tbig.textContent='no sensor detected'; }
+  else { tbig.className='big'; tbig.style.fontSize='26px';
+    tbig.textContent=curTemps.map(v=>Number(v).toFixed(0)).join('° / ')+' °C'; }
+  const tcolors=['#d29922','#bc8cff','#3fb950','#58a6ff','#f85149'];
+  draw('tempChart',(hist.temp&&hist.temp.length?hist.temp:[{data:[]}]).map((s,i)=>
+    ({data:s,color:tcolors[i%tcolors.length]})),{empty:'no temperature data in range'});
+  document.getElementById('disks').innerHTML=(d.disks||[]).map(k=>
+    `<div>${k.mount} — ${k.used_pct.toFixed(1)}% used (${k.free_gb.toFixed(0)} GB free of ${k.total_gb.toFixed(0)} GB)</div>`).join('')||'<span class="empty">no disk data</span>';
+  const coresHtml=((d.cpu&&d.cpu.per_core_pct)||[]).map((p,i)=>
+    `<div class="core"><span>C${i}</span><div class="barwrap"><div class="barfill" style="width:${Math.min(p,100).toFixed(1)}%"></div></div><span class="coreval">${Math.round(p)}%</span></div>`).join('')||'<span class="empty">waiting for data…</span>';
+  set('cores',coresHtml); set('coresDetail',coresHtml);
+  document.getElementById('uptime').textContent='uptime: '+fmtUp(d.uptime_secs||0)+' · '+(d.process_count||0)+' processes · '+hist.points.length+' points ('+range+')';
+  const procRow=p=>`<tr><td>${p.pid}</td><td>${p.name}</td><td class="num">${(p.cpu_pct||0).toFixed(1)}</td><td class="num">${(p.mem_mb||0).toFixed(0)}</td></tr>`;
+  const byCpu=(d.processes&&d.processes.by_cpu)||[];
+  const noProc='<tr><td colspan="4" class="empty">waiting for data…</td></tr>';
+  set('procs',byCpu.map(procRow).join('')||noProc);
+  set('procsLg',byCpu.map(procRow).join('')||noProc);
+  const byMem=[...byCpu].sort((a,b)=>(b.mem_mb||0)-(a.mem_mb||0));
+  set('memprocs',byMem.map(procRow).join('')||noProc);
+  set('procsMem',byMem.map(procRow).join('')||noProc);
+  set('ifaces',(nets.length?nets:[{name:'(no interface data)',rx_bps:null,tx_bps:null}]).map(n=>
+    `<tr><td>${n.name}</td><td class="num">↓ ${fmtBps(n.rx_bps)}</td><td class="num">↑ ${fmtBps(n.tx_bps)}</td></tr>`).join(''));
+  draw('cpuChartLg',[{data:hist.cpu}],{max:100,fixedMax:true});
+  draw('ramChartLg',[{data:hist.ram,color:'#3fb950'}],{max:100,fixedMax:true});
+  draw('netChartLg',[{data:hist.rx},{data:hist.tx}],{});
+  document.getElementById('alerts').innerHTML=(al.rules||[]).map(r=>{
+    const last=r.last_fired?new Date(r.last_fired).toLocaleTimeString():'never';
+    return `<div>${r.metric} ${r.op} ${r.value} for ${r.duration_secs}s — last fired: ${last}</div>`; }).join('')||'no alert rules';
 }
 let currentTab='overview';
+const TABS={overview:'overview',cpu:'cpuPanel',network:'networkPanel',ram:'ramPanel',processes:'processesPanel',logs:'logsPanel'};
 function showTab(t){ currentTab=t;
-  document.getElementById('overview').style.display=t==='overview'?'grid':'none';
-  document.getElementById('logsPanel').style.display=t==='logs'?'block':'none';
-  document.getElementById('tab-overview').classList.toggle('active',t==='overview');
-  document.getElementById('tab-logs').classList.toggle('active',t==='logs');
-  if(t==='logs') loadLogs(); }
+  for(const k in TABS){
+    const el=document.getElementById(TABS[k]); if(!el) continue;
+    el.style.display=k===t?(k==='overview'?'grid':'block'):'none';
+  }
+  document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('active',a.id==='tab-'+t));
+  if(t==='logs') loadLogs(); else renderAll(); }
 async function loadLogs(){
   if(currentTab!=='logs') return;
   const f=document.getElementById('logfilter').value.trim();
@@ -280,13 +394,26 @@ def build_logs(snaps, filt, limit):
 
 def build_history(snaps, range_key):
     now = datetime.now(timezone.utc)
-    deltas = {"1h": timedelta(hours=1), "6h": timedelta(hours=6),
-              "24h": timedelta(hours=24), "7d": timedelta(days=7)}
+    deltas = {"10m": timedelta(seconds=600), "15m": timedelta(seconds=900),
+              "30m": timedelta(seconds=1800), "1h": timedelta(hours=1),
+              "3h": timedelta(seconds=10800), "6h": timedelta(seconds=21600),
+              "12h": timedelta(seconds=43200), "1d": timedelta(seconds=86400),
+              "3d": timedelta(seconds=259200), "7d": timedelta(seconds=604800)}
     cutoff = now - deltas[range_key]
-    bucket_secs = {"1h": None, "6h": None,
-                   "24h": 300, "7d": 1800}[range_key]
+    bucket_secs = {"10m": None, "15m": None, "30m": None, "1h": None,
+                   "3h": None, "6h": 300, "12h": 300, "1d": 300,
+                   "3d": 1800, "7d": 1800}[range_key]
 
-    pts = []  # (datetime, cpu, ram, rx, tx)
+    def temp_series(snap):
+        """Normalize temperature_c (scalar | list | absent) to a list of floats."""
+        tc = snap.get("temperature_c")
+        if isinstance(tc, (list, tuple)):
+            return [float(t) if isinstance(t, (int, float)) else None for t in tc]
+        if isinstance(tc, (int, float)):
+            return [float(tc)]
+        return []
+
+    pts = []  # (datetime, cpu, ram, rx, tx, temps)
     for s in snaps:
         ts = parse_ts(s.get("timestamp"))
         if not ts or not ts.tzinfo:
@@ -295,9 +422,9 @@ def build_history(snaps, range_key):
             cpu = (s.get("cpu") or {}).get("total_pct")
             ram = (s.get("memory") or {}).get("pct")
             rx, tx = net_totals(s)
-            pts.append((ts, cpu, ram, rx, tx))
+            pts.append((ts, cpu, ram, rx, tx, temp_series(s)))
 
-    labels, cpu_l, ram_l, rx_l, tx_l = [], [], [], [], []
+    labels, cpu_l, ram_l, rx_l, tx_l, temp_l = [], [], [], [], [], []
 
     def emit(group):
         if not group:
@@ -310,6 +437,13 @@ def build_history(snaps, range_key):
         ram_l.append(round(avg(2) / max(cnt(2), 1), 2))
         rx_l.append(round(avg(3) / max(cnt(3), 1)))
         tx_l.append(round(avg(4) / max(cnt(4), 1)))
+        nsensors = max((len(p[5]) for p in group), default=0)
+        tavg = []
+        for i in range(nsensors):
+            vals = [p[5][i] for p in group
+                    if i < len(p[5]) and p[5][i] is not None]
+            tavg.append(round(sum(vals) / len(vals), 2) if vals else None)
+        temp_l.append(tavg)
 
     if bucket_secs:
         cur, group = None, []
@@ -328,9 +462,10 @@ def build_history(snaps, range_key):
         for p in pts:
             labels.append(p[0].astimezone(timezone.utc).isoformat())
             cpu_l.append(p[1]); ram_l.append(p[2]); rx_l.append(p[3]); tx_l.append(p[4])
+            temp_l.append(list(p[5]))
 
     return {"labels": labels, "cpu": cpu_l, "ram": ram_l, "rx": rx_l, "tx": tx_l,
-            "points": [{"ts": l} for l in labels]}
+            "temp": temp_l, "points": [{"ts": l} for l in labels]}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -356,8 +491,11 @@ class Handler(BaseHTTPRequestHandler):
         elif url.path == "/api/history":
             qs = parse_qs(url.query)
             rng = (qs.get("range") or ["1h"])[0]
-            if rng not in ("1h", "6h", "24h", "7d"):
-                self._send(400, json.dumps({"error": "range must be one of 1h,6h,24h,7d"}).encode())
+            valid = ("10m", "15m", "30m", "1h", "3h", "6h",
+                     "12h", "1d", "3d", "7d")
+            if rng not in valid:
+                self._send(400, json.dumps(
+                    {"error": "range must be one of " + ",".join(valid)}).encode())
                 return
             hist = build_history(load_snapshots(), rng)
             hist.pop("points")
