@@ -249,7 +249,6 @@ function renderAllSafe(){
     document.getElementById('status').innerHTML=
       '<span style="color:var(--yellow)">render error</span> · <a href="#" onclick="refresh();return false" style="color:var(--accent)">retry</a>'; }
 }
-}
 function renderAll(){
   const d=lastD,hist=lastHist,al=lastAl;
   if(!d||!hist) return;
