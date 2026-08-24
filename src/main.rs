@@ -1,4 +1,5 @@
 mod cli;
+mod logging;
 mod config;
 mod stats;
 mod ui;

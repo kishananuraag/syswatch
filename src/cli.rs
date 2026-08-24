@@ -19,6 +19,10 @@ pub struct Cli {
     #[arg(short, long)]
     pub json: bool,
 
+    /// Append each sample as a JSON line to the syswatch log directory.
+    #[arg(long)]
+    pub log: bool,
+
     /// Number of processes to show per table (top by CPU / top by memory).
     #[arg(short, long, value_name = "N")]
     pub top_n: Option<usize>,
@@ -71,12 +75,20 @@ pub fn run() {
         std::process::exit(1);
     }
 
+    if cli.log {
+        crate::logging::prune(cfg.retention_days);
+    }
+
     let mut collector = Collector::new(cfg.top_n);
     let mut tick: u64 = 0;
 
     loop {
         collector.refresh();
         let snap: Snapshot = collector.snapshot(cfg.temp);
+
+        if cli.log {
+            crate::logging::append(&snap);
+        }
 
         if cli.json {
             println!(

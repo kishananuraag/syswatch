@@ -23,6 +23,8 @@ pub struct Config {
     pub temp: bool,
     /// Use color output.
     pub color: bool,
+    /// Days to keep --log JSONL files before pruning.
+    pub retention_days: u64,
 }
 
 impl Default for Config {
@@ -38,6 +40,7 @@ impl Default for Config {
             top_n: 5,
             temp: false,
             color: true,
+            retention_days: 30,
         }
     }
 }
@@ -52,6 +55,7 @@ pub struct FileConfig {
     pub top_n: Option<usize>,
     pub temperature: Option<bool>,
     pub color: Option<bool>,
+    pub retention_days: Option<u64>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -125,6 +129,9 @@ impl Config {
         if let Some(v) = fc.color {
             self.color = v;
         }
+        if let Some(v) = fc.retention_days {
+            self.retention_days = v;
+        }
     }
 }
 
@@ -135,7 +142,7 @@ fn config_path() -> Option<PathBuf> {
     dirs_home().map(|h| h.join(".config").join("syswatch").join("config.toml"))
 }
 
-fn dirs_home() -> Option<PathBuf> {
+pub(crate) fn dirs_home() -> Option<PathBuf> {
     std::env::var("USERPROFILE")
         .or_else(|_| std::env::var("HOME"))
         .ok()

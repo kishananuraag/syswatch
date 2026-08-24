@@ -8,6 +8,7 @@ bar_width  = 20
 top_n      = 5
 temperature = false   # show CPU temp sensor when available
 color      = true
+retention_days = 30   # days to keep --log JSONL files
 
 [panels]
 cpu  = true
