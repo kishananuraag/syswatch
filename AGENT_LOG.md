@@ -14,3 +14,8 @@
 - Fixes en route: Developer Mode blocked `flutter pub add` → edited pubspec.yaml manually; gradle-8.12-all download blocked (network) → pinned wrapper distributionUrl to seeded gradle-8.14-bin.
 - BLOCKED: push to GitHub — repo kishananuraag/syswatch-android does not exist; needs Kishan to create (or grant gh auth). Local commit 656e342 on master.
 - 2026-08-24 ~22:30 IST Ox cron (deepseek-v4-flash, 2 parallel agents): P2 dashboard hardening — T1 logs viewer (/api/logs?filter=&limit=, human-readable lines, Logs tab), T2 per-core CPU bars (12 cores), T3 alerts.py + alerts.json thresholds w/ continuous-hold + 1h cooldown + optional TG ping, /api/alerts + Alerts card. Verified: py_compile OK, live curl of /api/logs + /api/alerts + filter=200. Committed+pushed.
+
+### 2026-08-24 ~23:30 IST — P2 widget pin/reorder (Ox cron, glm-5.2:free worker)
+- dashboard/server.py: widget pin toggle + up/down reorder buttons, order+pinned persisted to localStorage ('syswatch_widgets'), pinned-first on load. Client-side only.
+- Verified: py_compile OK, live server curl 200 + grep hit. Committed dfdd495, pushed master.
+- Note: worker exited 0 after edit without committing (silent-exit pattern) — mediator committed.
