@@ -1,0 +1,5 @@
+{
+  "_note": "Snapshot taken 2026-08-25 on HP Laptop 15s-fq5xxx (Windows 11) from a NON-elevated shell. Win32_TemperatureProbe returned 0 instances and MSAcpi_ThermalZoneTemperature was access-denied (HRESULT 0x80041003). No sensors were detected; per task constraints nothing is fabricated. Re-run elevated or with LibreHardwareMonitor to populate.",
+  "timestamp": null,
+  "sensors": []
+}

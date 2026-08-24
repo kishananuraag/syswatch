@@ -24,3 +24,10 @@
 - Worker stealth/ox-alpha (one shot): all 6 items — loading/error states, 10m-7d time pills driving ALL charts, bezier curves, iStat nav (Overview|CPU|Network|RAM|Processes|Logs), logs filter wiring, temp tile with sensor autodetect (no-sensor state when absent).
 - Mediator verified: py_compile OK; temp-instance test of /api/history?range= across all 10 ranges → 200 + consistent series (temp array incl.); HTML contains nav sections, quadraticCurveTo, 10m/7d pills, loading states. Restarted live :8787 server with new code (old PID killed); curl / + latest + 10m + 7d = 200.
 - Committed 25ead21, pushed master. NOTE: /api/latest has no temperature_c → tile correctly shows "no sensor" (nothing fabricated).
+
+## 2026-08-25 05:2x IST — Ox cron: B3-B6 verified done, B7+C1 dispatched
+- Mediator verified committed code (HEAD 8e0e465) against queue spec, not worker claims:
+  B3 bezier (draw() quadratic-midpoint, server.py:209-214) · B4 iStat tabs (nav 75-77, 6 panels 83-130, TABS/showTab, overview default) · B5 logs (/api/logs :512, filter wired, live 200) · B6 temp tile (frontend + Rust Option<f32> only-when-detected src/stats.rs:155-162,247).
+- All were already implemented in DESIGN v1 commit 25ead21 but never marked in WEEK_QUEUE.md → marked ✅ with evidence refs.
+- B7 (SENSOR_RESEARCH.md + sensors.json) dispatched → ox-alpha OR-kamiriyala; C1 (syswatch_android DESIGN.md v1) dispatched → ox-alpha OR-kmiriyala-amplifai. Both background, file-disjoint, uncommitted for mediator verify+commit.
+- Lane note: at 05:2x IST all 4 openrouter keys showed exhausted/429 from last night; free-tier cap reset at UTC midnight — live probe showed prio 0-2 keys back at 200. Lesson: probe keys before declaring lanes dead (see CASES.md).
