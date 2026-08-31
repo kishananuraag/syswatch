@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>syswatch</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header>
+  <h1>syswatch</h1>
+  <div id="cpuBig">&ndash;<span class="unit">%</span></div>
+  <div class="chips" id="rangeChips"></div>
+  <div id="clock"><span class="mono" id="clockTime"></span><br><span id="status">connecting&hellip;</span></div>
+</header>
+
+<div class="grid">
+
+  <!-- CPU TOTAL + range chart -->
+  <div class="card c7">
+    <h2>CPU total
+      <span style="text-transform:none;letter-spacing:0;font-weight:400"
+            id="cpuMeta"></span></h2>
+    <canvas id="cpuChart" class="chart"></canvas>
+  </div>
+
+  <!-- CPU PER CORE -->
+  <div class="card c5">
+    <h2>CPU per core <span id="coreCount" style="text-transform:none;letter-spacing:0;font-weight:400"></span></h2>
+    <div id="cores"></div>
+  </div>
+
+  <!-- RAM -->
+  <div class="card c4">
+    <h2>RAM</h2>
+    <div class="big" id="ramBig">&ndash;</div>
+    <div class="subval" id="ramSub"></div>
+    <div class="gauge"><div class="fill" id="ramFill"></div></div>
+    <canvas id="ramChart" class="chart" style="height:110px"></canvas>
+    <div class="subval" id="swapSub"></div>
+  </div>
+
+  <!-- NETWORK -->
+  <div class="card c4">
+    <h2>Network</h2>
+    <div class="big mono" id="netBig">&ndash;</div>
+    <div class="subval" id="netSub"></div>
+    <canvas id="netChart" class="chart" style="height:110px"></canvas>
+  </div>
+
+  <!-- ALERTS -->
+  <div class="card c4">
+    <h2>Alerts</h2>
+    <div id="alerts"><span class="na">loading&hellip;</span></div>
+  </div>
+
+  <!-- TEMPERATURES -->
+  <div class="card c12">
+    <h2>Temperatures
+      <span style="text-transform:none;letter-spacing:0;font-weight:400" id="tempNote"></span></h2>
+    <div id="tempArea"><span class="na">probing sensors&hellip;</span></div>
+  </div>
+
+  <!-- PROCESSES -->
+  <div class="card c6">
+    <h2>Top processes by CPU</h2>
+    <table><thead><tr><th>PID</th><th>Name</th><th class="num">CPU %</th><th class="num">Mem MB</th></tr></thead>
+      <tbody id="procCpu"><tr><td colspan="4" class="empty">waiting for data&hellip;</td></tr></tbody></table>
+  </div>
+  <div class="card c6">
+    <h2>Top processes by RAM</h2>
+    <table><thead><tr><th>PID</th><th>Name</th><th class="num">CPU %</th><th class="num">Mem MB</th></tr></thead>
+      <tbody id="procMem"><tr><td colspan="4" class="empty">waiting for data&hellip;</td></tr></tbody></table>
+  </div>
+
+</div>
+
+<!-- LOGS STRIP -->
+<div id="logStrip">
+  <h2>Collector / dashboard events <span id="logCount" style="font-weight:400;text-transform:none;letter-spacing:0"></span></h2>
+  <div id="logLines"><span class="na">loading&hellip;</span></div>
+</div>
+
+<script src="/static/chart.umd.min.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,478 +1,476 @@
 #!/usr/bin/env python3
-"""syswatch web dashboard — stdlib only."""
+"""syswatch web dashboard v2 — live psutil sampler + rolling JSONL store + collector history.
+
+Endpoints:
+  /                     static/index.html
+  /static/*             app.js, style.css, chart.umd.min.js (local copy)
+  /api/current          live CPU total+per-core, RAM used/total/pct+swap,
+                        top-5 processes by CPU and by RAM, net rates, temps, freq
+  /api/history?range=   10m|15m|1h|2d|5d|7d -> {points:[{ts,cpu,ram,...}], sensors:[...]}
+  /api/logs             last N events: live sampler ticks + collector service events
+                        + alert fires + server lifecycle, newest first
+
+Data sources: psutil for LIVE values; the Rust collector's JSONL snapshots in
+SYSWATCH_LOGS (default C:\\ProgramData\\syswatch\\logs) are indexed once in a
+background thread and tailed incrementally so /api/history serves his real
+3-day history without re-reading 226MB per request. The sampler also appends
+every tick to dashboard/data/samples.jsonl (rolling, MAX_STORE_LINES).
+
+Stdlib only except psutil.
+"""
 import json
 import os
+import threading
+import time
 from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
 import alerts
 
-LOGS_DIR = os.environ.get("SYSWATCH_LOGS", r"C:\ProgramData\syswatch\logs")
-PORT = 8787
-MAX_POINTS = 720
+try:
+    import psutil
+except ImportError:
+    psutil = None
 
-HTML = """<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<title>syswatch</title>
-<style>
-  :root { --bg:#0d1117; --panel:#161b22; --border:#30363d; --fg:#e6edf3;
-          --dim:#8b949e; --accent:#58a6ff; --green:#3fb950; --red:#f85149;
-          --yellow:#d29922; --purple:#bc8cff; }
-  * { box-sizing:border-box; margin:0; }
-  body { background:var(--bg); color:var(--fg); font:14px/1.5 -apple-system,'Segoe UI',sans-serif;
-         padding:20px; max-width:1100px; margin:0 auto; }
-  h1 { font-size:20px; margin-bottom:4px; }
-  .sub { color:var(--dim); font-size:12px; margin-bottom:16px; }
-  .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-  @media (max-width:800px){ .grid{grid-template-columns:1fr;} }
-  .card { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:14px; }
-  .card h2 { font-size:13px; text-transform:uppercase; letter-spacing:.05em; color:var(--dim); margin-bottom:8px; }
-  .big { font-size:42px; font-weight:600; line-height:1.1; }
-  .unit { font-size:16px; color:var(--dim); font-weight:400; }
-  canvas { width:100%; height:120px; display:block; margin-top:8px; }
-  table { width:100%; border-collapse:collapse; font-size:13px; }
-  th,td { text-align:left; padding:4px 6px; border-bottom:1px solid var(--border); }
-  th { color:var(--dim); font-weight:500; }
-  td.num { text-align:right; font-variant-numeric:tabular-nums; }
-  .barwrap { height:18px; background:#21262d; border-radius:4px; overflow:hidden; margin-top:6px; }
-  .barfill { height:100%; background:var(--accent); transition:width .4s; }
-  .disks div { margin:4px 0; font-size:13px; }
-  .temp { color:var(--yellow); }
-  #status { float:right; color:var(--dim); font-size:12px; }
-  nav { margin-bottom:14px; }
-  nav a { color:var(--dim); text-decoration:none; margin-right:16px; font-size:13px;
-          cursor:pointer; padding-bottom:2px; }
-  nav a.active { color:var(--fg); border-bottom:2px solid var(--accent); }
-  .core { display:grid; grid-template-columns:34px 1fr 40px; gap:8px; align-items:center;
-          margin:4px 0; font-size:12px; color:var(--dim); }
-  .core .barwrap { height:10px; margin-top:0; }
-  .coreval { text-align:right; color:var(--fg); font-variant-numeric:tabular-nums; }
-  .panel { display:none; margin-bottom:14px; }
-  .panel .card { margin-bottom:14px; }
-  #rangebar { display:inline-flex; gap:4px; text-transform:none; letter-spacing:0; font-weight:400; }
-  #rangebar button { background:none; border:1px solid var(--border); color:var(--dim);
-                     border-radius:10px; font-size:11px; padding:1px 8px; cursor:pointer; }
-  #rangebar button:hover { color:var(--fg); }
-  #rangebar button.active { color:var(--bg); background:var(--accent); border-color:var(--accent); }
-  .empty { color:var(--dim); font-style:italic; font-weight:400; text-transform:none; letter-spacing:0; }
-  #logfilter { width:260px; max-width:100%; background:var(--bg); border:1px solid var(--border);
-               color:var(--fg); border-radius:6px; padding:5px 9px; font-size:13px; margin-bottom:10px; }
-  .wbtn { background:none; border:1px solid var(--border); color:var(--dim); border-radius:4px;
-          cursor:pointer; font-size:11px; padding:1px 6px; margin-left:4px; }
-  .wbtn:hover { color:var(--fg); }
-  .wbtn.pinned { color:var(--accent); border-color:var(--accent); }
-  #loglines { background:#010409; border:1px solid var(--border); border-radius:8px; padding:12px;
-              font:12px/1.6 Consolas,Menlo,monospace; color:var(--dim); white-space:pre-wrap;
-              word-break:break-all; height:60vh; overflow-y:auto; }
-</style>
-</head>
-<body>
-<div><h1>syswatch <span id="status">loading…</span></h1>
-<div class="sub" id="sub"></div></div>
-<nav>
-  <a id="tab-overview" class="active" onclick="showTab('overview')">Overview</a>
-  <a id="tab-cpu" onclick="showTab('cpu')">CPU</a>
-  <a id="tab-network" onclick="showTab('network')">Network</a>
-  <a id="tab-ram" onclick="showTab('ram')">RAM</a>
-  <a id="tab-processes" onclick="showTab('processes')">Processes</a>
-  <a id="tab-logs" onclick="showTab('logs')">Logs</a>
-</nav>
-<div class="grid" id="overview">
-  <div class="card" id="w-cpu"><h2 style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">CPU total <span id="rangebar"></span></h2>
-    <div class="big" id="cpuBig">–<span class="unit">%</span></div>
-    <canvas id="cpuChart"></canvas></div>
-  <div class="card" id="w-cores" style="grid-column:1/-1"><h2>CPU per core</h2><div id="cores"></div></div>
-  <div class="card" id="w-mem"><h2>Memory</h2>
-    <div class="big" id="ramBig">–<span class="unit">%</span></div>
-    <div class="barwrap"><div class="barfill" id="ramBar"></div></div>
-    <canvas id="ramChart"></canvas></div>
-  <div class="card" id="w-net"><h2>Network rx/tx</h2>
-    <div class="big" id="netBig" style="font-size:24px">–</div>
-    <canvas id="netChart"></canvas></div>
-  <div class="card" id="w-temp"><h2>Temperature</h2>
-    <div class="big" id="tempBig" style="font-size:26px">–</div>
-    <canvas id="tempChart"></canvas></div>
-  <div class="card" id="w-disks"><h2>Disks / Uptime</h2>
-    <div class="disks" id="disks"></div>
-    <div id="uptime" style="margin-top:6px;color:var(--dim)"></div></div>
-  <div class="card" id="w-procs" style="grid-column:1/-1"><h2>Top processes by CPU</h2>
-    <table><thead><tr><th>PID</th><th>Name</th><th style="text-align:right">CPU %</th><th style="text-align:right">Mem MB</th></tr></thead>
-    <tbody id="procs"></tbody></table></div>
-  <div class="card" id="w-alerts" style="grid-column:1/-1"><h2>Alerts</h2><div id="alerts">loading…</div></div>
-</div>
-<div class="panel" id="cpuPanel">
-  <div class="card"><h2>CPU total % — history</h2><canvas id="cpuChartLg" style="height:220px"></canvas></div>
-  <div class="card"><h2>CPU per core</h2><div id="coresDetail"></div></div>
-</div>
-<div class="panel" id="networkPanel">
-  <div class="card"><h2>Network ↓ rx / ↑ tx — history</h2><canvas id="netChartLg" style="height:220px"></canvas></div>
-  <div class="card"><h2>Interfaces</h2>
-    <table><thead><tr><th>Interface</th><th style="text-align:right">Rx</th><th style="text-align:right">Tx</th></tr></thead>
-    <tbody id="ifaces"><tr><td colspan="3" class="empty">waiting for data…</td></tr></tbody></table></div>
-</div>
-<div class="panel" id="ramPanel">
-  <div class="card"><h2>Memory % — history</h2><canvas id="ramChartLg" style="height:220px"></canvas></div>
-  <div class="card"><h2>Top processes by memory</h2>
-    <table><thead><tr><th>PID</th><th>Name</th><th style="text-align:right">CPU %</th><th style="text-align:right">Mem MB</th></tr></thead>
-    <tbody id="memprocs"><tr><td colspan="4" class="empty">waiting for data…</td></tr></tbody></table></div>
-</div>
-<div class="panel" id="processesPanel">
-  <div class="card"><h2>Top processes by CPU</h2>
-    <table><thead><tr><th>PID</th><th>Name</th><th style="text-align:right">CPU %</th><th style="text-align:right">Mem MB</th></tr></thead>
-    <tbody id="procsLg"><tr><td colspan="4" class="empty">waiting for data…</td></tr></tbody></table></div>
-  <div class="card"><h2>Top processes by memory</h2>
-    <table><thead><tr><th>PID</th><th>Name</th><th style="text-align:right">CPU %</th><th style="text-align:right">Mem MB</th></tr></thead>
-    <tbody id="procsMem"><tr><td colspan="4" class="empty">waiting for data…</td></tr></tbody></table></div>
-</div>
-<div class="logs-panel panel" id="logsPanel">
-  <input id="logfilter" placeholder="filter logs…" oninput="loadLogs()">
-  <pre id="loglines">loading…</pre>
-</div>
-<script>
-// ---- widget pin/reorder (localStorage 'syswatch_widgets') ----
-const WKEY='syswatch_widgets';
-function loadWidgetState(){ try{ return JSON.parse(localStorage.getItem(WKEY))||{}; }catch(e){ return {}; } }
-function saveWidgetState(s){ try{ localStorage.setItem(WKEY,JSON.stringify(s)); }catch(e){} }
-function persistWidgets(){ const g=document.getElementById('overview');
-  saveWidgetState({order:[...g.children].map(c=>c.id),
-                   pinned:Object.fromEntries([...g.children].filter(c=>c.dataset.pinned).map(c=>[c.id,1]))}); }
-function moveWidget(card,dir){ const g=document.getElementById('overview');
-  const kids=[...g.children], i=kids.indexOf(card), j=i+dir;
-  if(j<0||j>=kids.length) return;
-  const pinnedFirst=kids.filter(k=>k.dataset.pinned), rest=kids.filter(k=>!k.dataset.pinned);
-  const arr=card.dataset.pinned?pinnedFirst:rest;
-  const ai=arr.indexOf(card); arr.splice(ai,1); arr.splice(Math.min(Math.max(ai+dir,0),arr.length),0,card);
-  [...pinnedFirst,...rest].forEach(k=>g.appendChild(k)); persistWidgets(); }
-function togglePin(card){ card.dataset.pinned=card.dataset.pinned?'':'1';
-  card.querySelector('.wpin').classList.toggle('pinned',!!card.dataset.pinned); persistWidgets(); }
-function initWidgets(){ const st=loadWidgetState(), g=document.getElementById('overview');
-  const cards=[...g.children];
-  cards.forEach(card=>{
-    if(st.pinned&&st.pinned[card.id]) card.dataset.pinned='1';
-    const h=card.querySelector('h2');
-    const pin=document.createElement('button'); pin.className='wbtn wpin'+(card.dataset.pinned?' pinned':'');
-    pin.textContent='pin'; pin.title='Pin widget'; pin.onclick=()=>togglePin(card);
-    const up=document.createElement('button'); up.className='wbtn'; up.textContent='↑'; up.title='Move up'; up.onclick=()=>moveWidget(card,-1);
-    const dn=document.createElement('button'); dn.className='wbtn'; dn.textContent='↓'; dn.title='Move down'; dn.onclick=()=>moveWidget(card,1);
-    h.append(pin,up,dn); });
-  if(Array.isArray(st.order)){
-    const pinned=[],rest=[];
-    for(const id of st.order){ const c=document.getElementById(id); if(!c) continue; (c.dataset.pinned?pinned:rest).push(c); }
-    cards.forEach(c=>{ if(!pinned.includes(c)&&!rest.includes(c)) (c.dataset.pinned?pinned:rest).push(c); });
-    [...pinned,...rest].forEach(c=>g.appendChild(c));
-  } else {
-    cards.filter(c=>c.dataset.pinned).forEach(c=>g.appendChild(c));
-  } }
-initWidgets();
-const RANGES = {'10m':600e3,'15m':900e3,'30m':1800e3,'1h':3600e3,'3h':10800e3,
-                '6h':21600e3,'12h':43200e3,'1d':86400e3,'3d':259200e3,'7d':604800e3};
-let range = '1h';
-(function buildRangeBar(){
-  const bar=document.getElementById('rangebar');
-  Object.keys(RANGES).forEach(function(r){
-    const b=document.createElement('button'); b.textContent=r;
-    if(r===range) b.classList.add('active');
-    b.onclick=function(){ range=r;
-      bar.querySelectorAll('button').forEach(x=>x.classList.remove('active'));
-      b.classList.add('active'); refresh(); };
-    bar.appendChild(b); });
-})();
-function fmtBps(v){ if(v==null) return '–'; const u=['bps','Kbps','Mbps','Gbps']; let i=0;
-  while(v>=1000&&i<u.length-1){v/=1000;i++;} return v.toFixed(1)+' '+u[i]; }
-function fmtUp(s){ const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);
-  return d?`${d}d ${h}h`:h?`${h}h ${m}m`:`${m}m`; }
-function draw(id, series, opts){
-  const c=document.getElementById(id), dpr=window.devicePixelRatio||1;
-  const w=c.clientWidth, h=c.clientHeight;
-  if(!w||!h) return; // canvas hidden (inactive tab)
-  c.width=w*dpr; c.height=h*dpr;
-  const x=c.getContext('2d'); x.scale(dpr,dpr);
-  x.clearRect(0,0,w,h);
-  const colors=['#58a6ff','#3fb950','#bc8cff'];
-  let max=opts.max||1;
-  if(!opts.fixedMax) for(const s of series) for(const v of s.data) if(v!=null&&v>max) max=v;
-  let any=false;
-  series.forEach(function(s,si){
-    x.strokeStyle=s.color||colors[si%colors.length];
-    x.lineWidth=1.5; x.lineJoin='round'; x.lineCap='round';
-    const n=s.data.length, run=[];
-    const flushRun=function(){
-      if(!run.length) return;
-      any=true;
-      if(run.length===1){ // isolated point
-        x.beginPath(); x.arc(run[0][0],run[0][1],1.5,0,2*Math.PI);
-        x.fillStyle=x.strokeStyle; x.fill();
-      } else {
-        // smooth bezier: quadratic through midpoints (no pointy spikes)
-        x.beginPath(); x.moveTo(run[0][0],run[0][1]);
-        for(let i=1;i<run.length-1;i++){
-          const mx=(run[i][0]+run[i+1][0])/2, my=(run[i][1]+run[i+1][1])/2;
-          x.quadraticCurveTo(run[i][0],run[i][1],mx,my); }
-        x.lineTo(run[run.length-1][0],run[run.length-1][1]);
-        x.stroke();
-      }
-      run.length=0;
-    };
-    for(let i=0;i<n;i++){ const v=s.data[i];
-      if(v==null){ flushRun(); continue; }
-      run.push([n>1?i/(n-1)*w:0, h-2-(v/max)*(h-8)]); }
-    flushRun();
-  });
-  if(!any){ x.fillStyle='#8b949e'; x.font='italic 12px sans-serif'; x.textAlign='center';
-    x.fillText(opts.empty||'no data in selected range', w/2, h/2); }
-}
-let lastD=null,lastHist=null,lastAl=null;
-async function refresh(){
-  try{
-    const [lr,hr,ar]=await Promise.all([fetch('/api/latest'),fetch('/api/history?range='+range),fetch('/api/alerts')]);
-    if(lr.status===404||hr.status===404){
-      document.getElementById('status').textContent='waiting for first snapshot…';
-      return;
-    }
-    if(!lr.ok||!hr.ok||!ar.ok) throw 0;
-    lastD=await lr.json(); lastHist=await hr.json(); lastAl=await ar.json();
-    document.getElementById('status').textContent='updating…';
-    renderAllSafe();
-    document.getElementById('status').textContent='updated '+new Date().toLocaleTimeString();
-    document.getElementById('sub').textContent='latest snapshot: '+lastD.timestamp;
-  }catch(e){
-    document.getElementById('status').innerHTML=
-      '<span style="color:var(--red)">error fetching data</span> · <a href="#" onclick="refresh();return false" style="color:var(--accent)">retry</a>';
-  }
-}
-function renderAllSafe(){
-  try{ renderAll(); }
-  catch(e){ console.error('render error',e);
-    document.getElementById('status').innerHTML=
-      '<span style="color:var(--yellow)">render error</span> · <a href="#" onclick="refresh();return false" style="color:var(--accent)">retry</a>'; }
-}
-function renderAll(){
-  const d=lastD,hist=lastHist,al=lastAl;
-  if(!d||!hist) return;
-  const set=function(id,v){ document.getElementById(id).innerHTML=v; };
-  document.getElementById('cpuBig').innerHTML=(d.cpu&&d.cpu.total_pct!=null?d.cpu.total_pct.toFixed(1):'–')+'<span class="unit">%</span>';
-  if(d.memory&&d.memory.pct!=null){
-    document.getElementById('ramBig').innerHTML=d.memory.pct.toFixed(1)+'<span class="unit">%</span>';
-    document.getElementById('ramBar').style.width=Math.min(d.memory.pct,100)+'%';
-  } else {
-    document.getElementById('ramBig').innerHTML='–<span class="unit">%</span>';
-  }
-  const nets=d.networks||[];
-  const rx=nets.reduce((a,n)=>a+(n.rx_bps||0),0), tx=nets.reduce((a,n)=>a+(n.tx_bps||0),0);
-  document.getElementById('netBig').textContent='↓ '+fmtBps(rx)+'   ↑ '+fmtBps(tx);
-  draw('cpuChart',[{data:hist.cpu}],{max:100,fixedMax:true});
-  draw('ramChart',[{data:hist.ram,color:'#3fb950'}],{max:100,fixedMax:true});
-  draw('netChart',[{data:hist.rx},{data:hist.tx}],{});
-  // temperature tile — auto-detected sensors only, never fabricated
-  const tc=d.temperature_c;
-  const curTemps=Array.isArray(tc)?tc:(tc!=null?[tc]:[]);
-  const tbig=document.getElementById('tempBig');
-  if(!curTemps.length){ tbig.className='empty'; tbig.style.fontSize='';
-    tbig.textContent='no sensor detected'; }
-  else { tbig.className='big'; tbig.style.fontSize='26px';
-    tbig.textContent=curTemps.map(v=>Number(v).toFixed(0)).join('° / ')+' °C'; }
-  const tcolors=['#d29922','#bc8cff','#3fb950','#58a6ff','#f85149'];
-  draw('tempChart',(hist.temp&&hist.temp.length?hist.temp:[{data:[]}]).map((s,i)=>
-    ({data:s,color:tcolors[i%tcolors.length]})),{empty:'no temperature data in range'});
-  document.getElementById('disks').innerHTML=(d.disks||[]).map(k=>
-    `<div>${k.mount} — ${k.used_pct.toFixed(1)}% used (${k.free_gb.toFixed(0)} GB free of ${k.total_gb.toFixed(0)} GB)</div>`).join('')||'<span class="empty">no disk data</span>';
-  const coresHtml=((d.cpu&&d.cpu.per_core_pct)||[]).map((p,i)=>
-    `<div class="core"><span>C${i}</span><div class="barwrap"><div class="barfill" style="width:${Math.min(p,100).toFixed(1)}%"></div></div><span class="coreval">${Math.round(p)}%</span></div>`).join('')||'<span class="empty">waiting for data…</span>';
-  set('cores',coresHtml); set('coresDetail',coresHtml);
-  document.getElementById('uptime').textContent='uptime: '+fmtUp(d.uptime_secs||0)+' · '+(d.process_count||0)+' processes · '+(hist.labels||[]).length+' points ('+range+')';
-  const procRow=p=>`<tr><td>${p.pid}</td><td>${p.name}</td><td class="num">${(p.cpu_pct||0).toFixed(1)}</td><td class="num">${(p.mem_mb||0).toFixed(0)}</td></tr>`;
-  const byCpu=(d.processes&&d.processes.by_cpu)||[];
-  const noProc='<tr><td colspan="4" class="empty">waiting for data…</td></tr>';
-  set('procs',byCpu.map(procRow).join('')||noProc);
-  set('procsLg',byCpu.map(procRow).join('')||noProc);
-  const byMem=[...byCpu].sort((a,b)=>(b.mem_mb||0)-(a.mem_mb||0));
-  set('memprocs',byMem.map(procRow).join('')||noProc);
-  set('procsMem',byMem.map(procRow).join('')||noProc);
-  set('ifaces',(nets.length?nets:[{name:'(no interface data)',rx_bps:null,tx_bps:null}]).map(n=>
-    `<tr><td>${n.name}</td><td class="num">↓ ${fmtBps(n.rx_bps)}</td><td class="num">↑ ${fmtBps(n.tx_bps)}</td></tr>`).join(''));
-  draw('cpuChartLg',[{data:hist.cpu}],{max:100,fixedMax:true});
-  draw('ramChartLg',[{data:hist.ram,color:'#3fb950'}],{max:100,fixedMax:true});
-  draw('netChartLg',[{data:hist.rx},{data:hist.tx}],{});
-  document.getElementById('alerts').innerHTML=(al.rules||[]).map(r=>{
-    const last=r.last_fired?new Date(r.last_fired).toLocaleTimeString():'never';
-    return `<div>${r.metric} ${r.op} ${r.value} for ${r.duration_secs}s — last fired: ${last}</div>`; }).join('')||'no alert rules';
-}
-let currentTab='overview';
-const TABS={overview:'overview',cpu:'cpuPanel',network:'networkPanel',ram:'ramPanel',processes:'processesPanel',logs:'logsPanel'};
-function showTab(t){ currentTab=t;
-  for(const k in TABS){
-    const el=document.getElementById(TABS[k]); if(!el) continue;
-    el.style.display=k===t?(k==='overview'?'grid':'block'):'none';
-  }
-  document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('active',a.id==='tab-'+t));
-  if(t==='logs') loadLogs(); else renderAllSafe(); }
-async function loadLogs(){
-  if(currentTab!=='logs') return;
-  const f=document.getElementById('logfilter').value.trim();
-  try{
-    const r=await fetch('/api/logs?limit=100&filter='+encodeURIComponent(f));
-    if(!r.ok) throw 0;
-    const d=await r.json();
-    document.getElementById('loglines').textContent=(d.lines||[]).join('\n')||'(no matching lines)';
-  }catch(e){ document.getElementById('loglines').textContent='error fetching logs'; }
-}
-setInterval(refresh,5000); setInterval(loadLogs,5000); refresh(); loadLogs();
-</script>
-</body>
-</html>"""
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+DATA_DIR = os.environ.get("SYSWATCH_DATA", os.path.join(BASE_DIR, "data"))
+STORE_PATH = os.path.join(DATA_DIR, "samples.jsonl")
+COLLECTOR_LOGS = os.environ.get("SYSWATCH_LOGS", r"C:\ProgramData\syswatch\logs")
+
+PORT = int(os.environ.get("SYSWATCH_PORT", "8123"))
+SAMPLE_SECS = float(os.environ.get("SYSWATCH_SAMPLE_SECS", "5"))
+MAX_STORE_LINES = 17280  # ~24h at 5s; rolled on startup
+RANGES = {"10m": 600, "15m": 900, "1h": 3600, "2d": 172800, "5d": 432000, "7d": 604800}
+MAX_POINTS_PER_RANGE = 480
+
+BOOT_TS = datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
-def load_snapshots():
-    """Yield parsed snapshot dicts from all JSONL files in LOGS_DIR, oldest first."""
-    files = []
+# ---------------------------------------------------------------- temperatures
+# psutil has no sensors_temperatures() on Windows; try it anyway (future-proof,
+# works if this ever runs on Linux), then LibreHardwareMonitor / OpenHardware-
+# Monitor WMI namespaces if Kishan installs one. No sensor found -> honest
+# "no sensors exposed" everywhere. NEVER fabricate a value.
+def _wmi_sensors(namespace):
+    """Query <namespace>/Sensor for Temperature entries via powershell CIM cmdlets."""
+    import subprocess
+    cmd = ("Get-CimInstance -Namespace %s -ClassName Sensor -ErrorAction Stop "
+           "| Where-Object { $_.SensorType -eq 'Temperature' } "
+           "| Select-Object Name,Value | ConvertTo-Json -Compress" % namespace)
+    r = subprocess.run(["powershell", "-NoProfile", "-Command", cmd],
+                       capture_output=True, text=True, timeout=20)
+    out = (r.stdout or "").strip()
+    if not out or r.returncode != 0:
+        return []
+    data = json.loads(out)
+    if isinstance(data, dict):
+        data = [data]
+    sensors = []
+    for s in data:
+        name, val = s.get("Name"), s.get("Value")
+        if isinstance(val, (int, float)):
+            sensors.append((name or "?", round(float(val), 1)))
+    return sensors
+
+
+_WMI_CACHE = {"ts": 0.0, "sensors": None}
+_WMI_TTL = 30.0  # seconds; a PowerShell spawn per sample tick is too heavy
+
+
+def read_temperatures():
+    """Return list of {'label','c'} for every real temp sensor found, else []."""
+    now = time.monotonic()
+    if _WMI_CACHE["sensors"] is not None and now - _WMI_CACHE["ts"] < _WMI_TTL:
+        return list(_WMI_CACHE["sensors"])
+    found = []
+    if psutil is not None and hasattr(psutil, "sensors_temperatures"):
+        try:
+            for chip, entries in (psutil.sensors_temperatures() or {}).items():
+                for i, e in enumerate(entries):
+                    label = e.label or ("%s %d" % (chip, i))
+                    if e.current is not None:
+                        found.append({"label": "%s/%s" % (chip, label),
+                                      "c": round(float(e.current), 1)})
+        except Exception:
+            pass
+    if not found:
+        for ns in ("root/LibreHardwareMonitor", "root/OpenHardwareMonitor"):
+            try:
+                for name, val in _wmi_sensors(ns):
+                    found.append({"label": name, "c": val})
+            except Exception:
+                continue
+            if found:
+                break
+    _WMI_CACHE["ts"] = now
+    _WMI_CACHE["sensors"] = list(found)
+    return found
+
+
+# ------------------------------------------------------------- events (logs UI)
+EVENT_LOCK = threading.Lock()
+EVENTS = []  # newest-first ring: {"ts","src","msg"}
+MAX_EVENTS = 500
+
+
+def log_event(src, msg):
+    with EVENT_LOCK:
+        EVENTS.insert(0, {"ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                          "src": src, "msg": str(msg)[:300]})
+        del EVENTS[MAX_EVENTS:]
+
+
+# ------------------------------------------------------- live sampler (psutil)
+class Sampler:
+    """Samples psutil every SAMPLE_SECS; keeps live snapshot + appends to store."""
+
+    PROC_SCAN_SECS = 60.0  # WHY: process_iter over ~350 procs costs 4-5s on Windows;
+                           # scanning every tick made the sampler thread ~97% busy at idle.
+
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.current = None
+        self._last_net = None  # (monotonic, {iface: (bytes_sent, bytes_recv)})
+        self._first_proc_scan = True
+        self._proc_cache = ([], [], 0)
+        self._last_proc_scan = 0.0
+
+    @staticmethod
+    def _scan_processes():
+        """Top-5 process lists by CPU% and by RSS. First pass primes cpu_percent."""
+        rows = []
+        skip = {"system idle process", "memory compression"}
+        for p in psutil.process_iter(attrs=["pid", "name", "cpu_percent",
+                                            "memory_info"]):
+            try:
+                inf = p.info
+                mi = inf.get("memory_info")
+                rows.append({"pid": inf["pid"], "name": inf.get("name") or "?",
+                             "cpu_pct": inf.get("cpu_percent") or 0.0,
+                             "mem_mb": round((mi.rss if mi else 0) / 1048576, 1)})
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+        rows = [r for r in rows if r["name"].lower() not in skip]
+        by_cpu = sorted(rows, key=lambda r: -r["cpu_pct"])[:5]
+        by_mem = sorted(rows, key=lambda r: -r["mem_mb"])[:5]
+        return by_cpu, by_mem, len(rows)
+
+    # -- helpers ------------------------------------------------------------
+    @staticmethod
+    def _net_rates(before, after, dt):
+        rates = []
+        for name, st in after.items():
+            prev = before.get(name) if before else None
+            if not prev:
+                continue
+            down = max(0.0, (st.bytes_recv - prev[1]) / dt)
+            up = max(0.0, (st.bytes_sent - prev[0]) / dt)
+            if name.lower().startswith(("lo", "loopback")):
+                continue
+            rates.append({"name": name, "down_bps": round(down, 1),
+                          "up_bps": round(up, 1)})
+        return sorted(rates, key=lambda r: -(r["down_bps"] + r["up_bps"]))[:5]
+
+    def sample_once(self):
+        vm = psutil.virtual_memory()
+        swap = psutil.swap_memory()
+        freq = None
+        try:
+            f = psutil.cpu_freq()
+            freq = round(f.current) if f else None
+        except Exception:
+            pass
+        temps = read_temperatures()
+        per_core = psutil.cpu_percent(interval=None, percpu=True)
+        now_mono2 = time.monotonic()
+        if self._first_proc_scan or (now_mono2 - self._last_proc_scan) >= self.PROC_SCAN_SECS:
+            self._proc_cache = self._scan_processes()
+            self._last_proc_scan = now_mono2
+            self._first_proc_scan = False
+        by_cpu, by_mem, proc_count = self._proc_cache
+        now_mono = time.monotonic()
+        net2 = psutil.net_io_counters(pernic=True)
+        with self.lock:
+            prev_t, prev_io = self._last_net or (None, None)
+            rates = (self._net_rates(prev_io, net2, now_mono - prev_t)
+                     if prev_io and now_mono - prev_t >= 1 else [])
+            self._last_net = (now_mono, net2)
+            snap = {
+                "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                "source": "psutil",
+                "cpu": {"total_pct": psutil.cpu_percent(interval=None),
+                        "per_core_pct": [round(p, 1) for p in per_core],
+                        "freq_mhz": freq},
+                "ram": {"used_bytes": vm.used, "total_bytes": vm.total,
+                        "pct": vm.percent,
+                        "swap_used_bytes": swap.used,
+                        "swap_total_bytes": swap.total},
+                "net": {"ifaces": rates,
+                        "down_bps": round(sum(r["down_bps"] for r in rates), 1),
+                        "up_bps": round(sum(r["up_bps"] for r in rates), 1)},
+                "temps_c": temps,
+                "processes": {"by_cpu": by_cpu, "by_mem": by_mem},
+                "proc_count": proc_count,
+                "boot_ts": BOOT_TS,
+            }
+            # legacy alias so existing alert rules (metrics read "memory") work
+            snap["memory"] = snap["ram"]
+            self.current = snap
+        return snap
+
+
+def roll_store():
+    """Keep only the newest MAX_STORE_LINES lines of the rolling store."""
     try:
-        for name in os.listdir(LOGS_DIR):
-            if name.endswith(".jsonl"):
-                files.append(os.path.join(LOGS_DIR, name))
+        with open(STORE_PATH, encoding="utf-8", errors="replace") as f:
+            lines = [l for l in f.read().splitlines() if l.strip()]
     except OSError:
         return
-    for path in sorted(files):
+    if len(lines) > MAX_STORE_LINES:
+        tmp = STORE_PATH + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines[-MAX_STORE_LINES:]) + "\n")
+        os.replace(tmp, STORE_PATH)
+
+
+def sampler_loop(sampler):
+    """5s tick: sample psutil, append to store, log events, feed alerter."""
+    n = 0
+    while True:
         try:
-            with open(path, encoding="utf-8", errors="replace") as f:
-                for line in f:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        yield json.loads(line)
-                    except (json.JSONDecodeError, ValueError):
-                        continue
+            snap = sampler.sample_once()
+            with open(STORE_PATH, "a", encoding="utf-8") as f:
+                f.write(json.dumps({"ts": snap["ts"], "cpu": snap["cpu"]["total_pct"],
+                                    "ram": snap["ram"]["pct"],
+                                    "down_bps": snap["net"]["down_bps"],
+                                    "up_bps": snap["net"]["up_bps"],
+                                    "temps": [t["c"] for t in snap["temps_c"]]}) + "\n")
+            n += 1
+            if n % 12 == 1:  # ~once a minute
+                c = snap["cpu"]["total_pct"]
+                r = snap["ram"]["pct"]
+                t = ("%d sensors" % len(snap["temps_c"])) if snap["temps_c"] else "none"
+                log_event("sampler", "tick #%d cpu=%.0f%% ram=%.0f%% temps=%s" % (n, c, r, t))
+            HIST.append_live(snap)
+        except Exception as e:
+            log_event("sampler", "ERROR: %r" % e)
+        time.sleep(SAMPLE_SECS)
+
+
+# ------------------------------------------- collector history (JSONL indexer)
+# The Rust collector service writes full snapshots to COLLECTOR_LOGS/*.jsonl.
+# A background thread indexes them ONCE into memory and then tails the newest
+# file incrementally, so /api/history serves days of real history without
+# re-reading 200MB+ per request. History grows live from now on.
+class HistoryIndex:
+    """In-memory ring of compact points from the collector's JSONL snapshots."""
+
+    MAX_POINTS = 86400  # ~48h at the collector's ~2s cadence; ~30MB RAM
+
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.pts = []          # oldest-first dicts: ts,cpu,ram,down_bps,up_bps
+        self.offsets = {}      # file name -> bytes already consumed
+        self._partial = {}     # file name -> incomplete trailing line
+        self.index_done = threading.Event()  # tail must not race the full pass
+
+    def _parse(self, line):
+        try:
+            s = json.loads(line)
+        except ValueError:
+            return None
+        try:
+            cpu = s["cpu"]["total_pct"]
+            ram = s["memory"]["pct"]
+            nets = s.get("networks") or []
+            down = round(sum(n.get("rx_bps") or 0 for n in nets), 1)
+            up = round(sum(n.get("tx_bps") or 0 for n in nets), 1)
+        except (KeyError, TypeError):
+            return None  # legacy schema without per-core/memory dict
+        temps = s.get("temperature_c")
+        if isinstance(temps, (int, float)):
+            temps = [temps]
+        elif not isinstance(temps, list):
+            temps = []
+        return {"ts": s.get("timestamp"), "cpu": cpu, "ram": ram,
+                "down_bps": down, "up_bps": up,
+                "temps": [t for t in temps if isinstance(t, (int, float))]}
+
+    def index_all(self):
+        """Full pass over existing files (background thread; may take a while)."""
+        try:
+            self._index_all_run()
+        finally:
+            # always release the tail loop, even on failure or missing dir
+            self.index_done.set()
+
+    def _index_all_run(self):
+        try:
+            names = sorted(n for n in os.listdir(COLLECTOR_LOGS) if n.endswith(".jsonl"))
         except OSError:
-            continue
+            log_event("history", "no collector logs dir: %s" % COLLECTOR_LOGS)
+            return
+        pts = []
+        for name in names:
+            path = os.path.join(COLLECTOR_LOGS, name)
+            got, _ = self._read_new(path)
+            pts.extend(got)
+            log_event("history", "indexed %s: %d points" % (name, len(got)))
+        pts.sort(key=lambda p: p["ts"] or "")
+        with self.lock:
+            self.pts = pts[-self.MAX_POINTS:]
+        self.index_done.set()
+        log_event("history", "full index done: %d points total" % len(self.pts))
+
+    def _read_new(self, path):
+        """Read bytes after last offset; return (points, lines_read). Update offsets.
+
+        Handles the trailing partial line of a file being actively written."""
+        name = os.path.basename(path)
+        try:
+            size = os.path.getsize(path)
+        except OSError:
+            return [], 0
+        with self.lock:
+            off = self.offsets.get(name, 0)
+            if off > size:      # rotated/truncated -> re-read whole file
+                off = 0
+                self.offsets[name] = 0
+            if size == off:
+                return [], 0
+        try:
+            with open(path, "rb") as f:
+                f.seek(off)
+                raw = f.read()
+        except OSError as e:
+            log_event("history", "read error %s: %s" % (name, e))
+            return [], 0
+        got = []
+        data = raw.decode("utf-8", errors="replace")
+        lines = data.split("\n")
+        tail = None
+        if not data.endswith("\n"):
+            tail = lines.pop()
+        head = self._partial.pop(name, None)
+        if head is not None:
+            if lines:
+                lines[0] = head + lines[0]
+            else:
+                tail = head + (tail or "")
+        if tail is not None:
+            self._partial[name] = tail
+        else:
+            self._partial.pop(name, None)
+        for line in lines:
+            p = self._parse(line)
+            if p and p["ts"]:
+                got.append(p)
+        with self.lock:
+            self.offsets[name] = off + len(raw)
+        return got, len(lines)
+
+    def tail_newest(self):
+        """Incremental: consume only new bytes of the two newest JSONL files."""
+        if not self.index_done.is_set():
+            return  # full index still running; it owns the offsets right now
+        try:
+            names = sorted(n for n in os.listdir(COLLECTOR_LOGS) if n.endswith(".jsonl"))
+        except OSError:
+            return
+        fresh = []
+        for name in names[-2:]:
+            got, _ = self._read_new(os.path.join(COLLECTOR_LOGS, name))
+            fresh.extend(got)
+        if fresh:
+            fresh.sort(key=lambda p: p["ts"] or "")
+            with self.lock:
+                merged = self.pts + fresh
+                merged.sort(key=lambda p: p["ts"] or "")
+                self.pts = merged[-self.MAX_POINTS:]
+
+    def tail_loop(self):
+        while True:
+            self.tail_newest()
+            time.sleep(15)
+
+    def append_live(self, snap):
+        """Feed a dashboard-sampler tick into the ring (keeps charts live
+        even if the collector service is stopped)."""
+        p = {"ts": snap["ts"],
+             "cpu": snap["cpu"]["total_pct"],
+             "ram": snap["ram"]["pct"],
+             "down_bps": snap["net"]["down_bps"],
+             "up_bps": snap["net"]["up_bps"],
+             "temps": [t["c"] for t in (snap.get("temps_c") or [])]}
+        with self.lock:
+            self.pts.append(p)
+            extra = len(self.pts) - self.MAX_POINTS
+            if extra > 0:
+                del self.pts[:extra]
 
 
-def parse_ts(ts):
+# ------------------------------------------------------------- /api/history
+def _ts_epoch(ts):
+    """ISO timestamp -> unix epoch (handles 'Z' and '+00:00' forms); None on junk."""
     try:
-        return datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        return datetime.fromisoformat(ts.replace("Z", "+00:00")).timestamp()
     except (ValueError, AttributeError, TypeError):
         return None
 
 
-def net_totals(snap):
-    rx = sum(n.get("rx_bps") or 0 for n in snap.get("networks") or [])
-    tx = sum(n.get("tx_bps") or 0 for n in snap.get("networks") or [])
-    return rx, tx
-
-
-def fmt_rate(bps):
-    bps = bps or 0
-    if bps >= 1_000_000:
-        return "%.1fMB/s" % (bps / 1_000_000)
-    if bps >= 1_000:
-        return "%.1fKB/s" % (bps / 1_000)
-    return "%.0fB/s" % bps
-
-
-def render_log_line(snap):
-    t = "--:--"
-    ts = parse_ts(snap.get("timestamp"))
-    if ts and ts.tzinfo:
-        t = ts.astimezone().strftime("%H:%M")
-    cpu = (snap.get("cpu") or {}).get("total_pct")
-    ram = (snap.get("memory") or {}).get("pct")
-    rx, _ = net_totals(snap)
-    ndisks = len(snap.get("disks") or [])
-    procs = (snap.get("processes") or {}).get("by_cpu") or []
-    parts = [t, "CPU %d%%" % round(cpu or 0), "RAM %d%%" % round(ram or 0),
-             "rx %s" % fmt_rate(rx), "%d disk%s" % (ndisks, "s" if ndisks != 1 else "")]
-    if procs:
-        top = procs[0]
-        parts.append("top: %s %dMB" % (top.get("name"), round(top.get("mem_mb") or 0)))
-    return " · ".join(parts)
-
-
-def build_logs(snaps, filt, limit):
-    lines = []
-    for s in snaps:
-        line = render_log_line(s)
-        if filt and filt.lower() not in line.lower():
-            continue
-        lines.append(line)
-    return lines[-limit:]
-
-
-def build_history(snaps, range_key):
-    now = datetime.now(timezone.utc)
-    deltas = {"10m": timedelta(seconds=600), "15m": timedelta(seconds=900),
-              "30m": timedelta(seconds=1800), "1h": timedelta(hours=1),
-              "3h": timedelta(seconds=10800), "6h": timedelta(seconds=21600),
-              "12h": timedelta(seconds=43200), "1d": timedelta(seconds=86400),
-              "3d": timedelta(seconds=259200), "7d": timedelta(seconds=604800)}
-    cutoff = now - deltas[range_key]
-    bucket_secs = {"10m": None, "15m": None, "30m": None, "1h": None,
-                   "3h": None, "6h": 300, "12h": 300, "1d": 300,
-                   "3d": 1800, "7d": 1800}[range_key]
-
-    def temp_series(snap):
-        """Normalize temperature_c (scalar | list | absent) to a list of floats."""
-        tc = snap.get("temperature_c")
-        if isinstance(tc, (list, tuple)):
-            return [float(t) if isinstance(t, (int, float)) else None for t in tc]
-        if isinstance(tc, (int, float)):
-            return [float(tc)]
+def bucketize(points, range_secs, now):
+    """Average raw points into ~MAX_POINTS_PER_RANGE buckets for smooth charts."""
+    now_e = now.timestamp()
+    cutoff_e = now_e - range_secs
+    pts = []
+    for p in points:
+        e = _ts_epoch(p.get("ts"))
+        if e is not None and e >= cutoff_e:
+            pts.append((e, p))
+    if not pts:
         return []
+    n_buckets = min(MAX_POINTS_PER_RANGE, max(1, len(pts)))
+    span = range_secs / n_buckets
+    buckets = {}
+    for e, p in pts:
+        idx = int((e - cutoff_e) // span)
+        b = buckets.setdefault(idx, {})
+        for k in ("cpu", "ram", "down_bps", "up_bps"):
+            v = p.get(k)
+            if isinstance(v, (int, float)):
+                b[k] = b.get(k, 0.0) + v
+                b["c" + k] = b.get("c" + k, 0) + 1
+        for i, t in enumerate(p.get("temps") or []):
+            if isinstance(t, (int, float)):
+                key = "t%d" % i
+                b[key] = b.get(key, 0.0) + t
+                b["ct" + str(i)] = b.get("ct" + str(i), 0) + 1
+    out = []
+    for idx in sorted(buckets):
+        b = buckets[idx]
 
-    pts = []  # (datetime, cpu, ram, rx, tx, temps)
-    for s in snaps:
-        ts = parse_ts(s.get("timestamp"))
-        if not ts or not ts.tzinfo:
-            continue
-        if ts >= cutoff:
-            cpu = (s.get("cpu") or {}).get("total_pct")
-            ram = (s.get("memory") or {}).get("pct")
-            rx, tx = net_totals(s)
-            pts.append((ts, cpu, ram, rx, tx, temp_series(s)))
+        def avg(k):
+            c = b.get("c" + k, 0)
+            return round(b[k] / c, 2) if c else None
 
-    labels, cpu_l, ram_l, rx_l, tx_l, temp_l = [], [], [], [], [], []
+        ts = datetime.fromtimestamp(cutoff_e + (idx + 0.5) * span, tz=timezone.utc)
+        temps = []
+        i = 0
+        while ("ct%d" % i) in b:
+            c = b["ct%d" % i]
+            temps.append(round(b["t%d" % i] / c, 2) if c else None)
+            i += 1
+        out.append({"ts": ts.isoformat(), "cpu": avg("cpu"), "ram": avg("ram"),
+                    "down_bps": avg("down_bps"), "up_bps": avg("up_bps"),
+                    "temps": temps})
+    return out
 
-    def emit(group):
-        if not group:
-            return
-        n = len(group)
-        avg = lambda i: sum(p[i] for p in group if p[i] is not None)
-        cnt = lambda i: sum(1 for p in group if p[i] is not None)
-        labels.append(group[0][0].astimezone(timezone.utc).isoformat())
-        cpu_l.append(round(avg(1) / max(cnt(1), 1), 2))
-        ram_l.append(round(avg(2) / max(cnt(2), 1), 2))
-        rx_l.append(round(avg(3) / max(cnt(3), 1)))
-        tx_l.append(round(avg(4) / max(cnt(4), 1)))
-        nsensors = max((len(p[5]) for p in group), default=0)
-        tavg = []
-        for i in range(nsensors):
-            vals = [p[5][i] for p in group
-                    if i < len(p[5]) and p[5][i] is not None]
-            tavg.append(round(sum(vals) / len(vals), 2) if vals else None)
-        temp_l.append(tavg)
 
-    if bucket_secs:
-        cur, group = None, []
-        for p in pts:
-            b = int(p[0].timestamp()) // bucket_secs
-            if cur is not None and b != cur:
-                emit(group)
-                group = []
-            cur = b
-            group.append(p)
-        emit(group)
-    else:
-        if len(pts) > MAX_POINTS:
-            step = len(pts) / MAX_POINTS
-            pts = [pts[int(i * step)] for i in range(MAX_POINTS)]
-        for p in pts:
-            labels.append(p[0].astimezone(timezone.utc).isoformat())
-            cpu_l.append(p[1]); ram_l.append(p[2]); rx_l.append(p[3]); tx_l.append(p[4])
-            temp_l.append(list(p[5]))
-
-    return {"labels": labels, "cpu": cpu_l, "ram": ram_l, "rx": rx_l, "tx": tx_l,
-            "temp": temp_l, "points": [{"ts": l} for l in labels]}
+# ------------------------------------------------------------------ HTTP layer
+HIST = HistoryIndex()
+SAMPLER = Sampler() if psutil else None
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -480,54 +478,132 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(code)
         self.send_header("Content-Type", ctype + "; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
         self.end_headers()
-        self.wfile.write(body)
+        try:
+            self.wfile.write(body)
+        except (ConnectionAbortedError, BrokenPipeError):
+            pass
+
+    def _json(self, obj, code=200):
+        self._send(code, json.dumps(obj).encode("utf-8"))
 
     def do_GET(self):
         url = urlparse(self.path)
-        if url.path == "/":
-            self._send(200, HTML.encode("utf-8"), "text/html")
-        elif url.path == "/api/latest":
-            latest = None
-            for snap in load_snapshots():
-                latest = snap
-            if latest is None:
-                self._send(404, json.dumps({"error": "no snapshots found"}).encode())
-            else:
-                self._send(200, json.dumps(latest).encode())
-        elif url.path == "/api/history":
-            qs = parse_qs(url.query)
-            rng = (qs.get("range") or ["1h"])[0]
-            valid = ("10m", "15m", "30m", "1h", "3h", "6h",
-                     "12h", "1d", "3d", "7d")
-            if rng not in valid:
-                self._send(400, json.dumps(
-                    {"error": "range must be one of " + ",".join(valid)}).encode())
-                return
-            hist = build_history(load_snapshots(), rng)
-            hist.pop("points")
-            self._send(200, json.dumps(hist).encode())
-        elif url.path == "/api/alerts":
-            self._send(200, json.dumps(alerts.state()).encode())
-        elif url.path == "/api/logs":
-            qs = parse_qs(url.query)
-            filt = (qs.get("filter") or [""])[0]
-            try:
-                limit = int((qs.get("limit") or ["100"])[0])
-            except ValueError:
-                limit = 100
-            limit = max(1, min(limit, 5000))
-            lines = build_logs(load_snapshots(), filt, limit)
-            self._send(200, json.dumps({"lines": lines}).encode())
-        else:
+        route = url.path
+        if route == "/":
+            return self._serve_file("index.html", "text/html")
+        if route.startswith("/static/"):
+            return self._serve_file(route[len("/static/"):], None)
+        try:
+            if route == "/api/current":
+                return self.api_current()
+            if route == "/api/history":
+                return self.api_history(parse_qs(url.query))
+            if route == "/api/logs":
+                return self.api_logs(parse_qs(url.query))
+            if route == "/api/alerts":
+                return self._json(alerts.state())
+        except Exception as e:
+            log_event("http", "%s failed: %r" % (route, e))
+            import traceback
+            traceback.print_exc()
+            return self._json({"error": repr(e)}, 500)
+        self._json({"error": "not found"}, 404)
+
+    def _serve_file(self, rel, ctype):
+        path = os.path.normpath(os.path.join(STATIC_DIR, rel))
+        if not path.startswith(STATIC_DIR):  # no traversal
+            return self._send(403, b'{"error":"forbidden"}')
+        types = {".html": "text/html", ".js": "text/javascript",
+                 ".css": "text/css", ".map": "application/json",
+                 ".svg": "image/svg+xml"}
+        ctype = ctype or types.get(os.path.splitext(path)[1], "application/octet-stream")
+        try:
+            with open(path, "rb") as f:
+                self._send(200, f.read(), ctype)
+        except OSError:
             self._send(404, b'{"error":"not found"}')
+
+    def api_current(self):
+        snap = SAMPLER.current if SAMPLER else None
+        if not snap:
+            return self._json({"error": "first sample in progress"}, 503)
+        self._json(snap)
+
+    def api_history(self, qs):
+        rng = (qs.get("range") or ["1h"])[0]
+        if rng not in RANGES:
+            return self._json(
+                {"error": "range must be one of " + ",".join(RANGES)}, 400)
+        now = datetime.now(timezone.utc)
+        with HIST.lock:
+            raw = list(HIST.pts)
+        pts = bucketize(raw, RANGES[rng], now)
+        labels = [p["ts"] for p in pts]
+        out = {"range": rng, "labels": labels, "points": pts,
+               "series": {"cpu": [p["cpu"] for p in pts],
+                          "ram": [p["ram"] for p in pts],
+                          "down_bps": [p["down_bps"] for p in pts],
+                          "up_bps": [p["up_bps"] for p in pts]},
+               "temp_series": {}, "sensor_labels": [],
+               "history_sources": {"collector_points": len(raw)}}
+        self._json(out)
+
+    def api_logs(self, qs):
+        try:
+            limit = int((qs.get("limit") or ["50"])[0])
+        except ValueError:
+            limit = 50
+        limit = max(1, min(limit, MAX_EVENTS))
+        src_filter = (qs.get("src") or [""])[0].lower()
+        text_filter = ((qs.get("filter") or [""])[0]).lower()
+        with EVENT_LOCK:
+            evs = list(EVENTS)
+        out = []
+        for e in evs:
+            if src_filter and src_filter not in e["src"].lower():
+                continue
+            if text_filter and text_filter not in e["msg"].lower():
+                continue
+            out.append(e)
+            if len(out) >= limit:
+                break
+        self._json({"events": out, "count": len(EVENTS)})
 
     def log_message(self, fmt, *args):
         pass
 
 
-if __name__ == "__main__":
-    alerts.start_alerter()
+def main():
+    os.makedirs(DATA_DIR, exist_ok=True)
+    roll_store()
+    alerts.start_alerter(source=lambda: SAMPLER.current if SAMPLER else None)
+
+    # mirror alert fires into the events ring for the Logs tile
+    orig_fire = alerts.Alerter._fire
+
+    def _fire_with_event(self, rule, value):
+        log_event("alerts", "FIRE %s %s %s current=%s" %
+                  (rule.get("metric"), rule.get("op"), rule.get("value"),
+                   round(value, 1)))
+        orig_fire(self, rule, value)
+
+    alerts.Alerter._fire = _fire_with_event
+
+    threading.Thread(target=sampler_loop, args=(SAMPLER,),
+                     name="syswatch-sampler", daemon=True).start()
+    threading.Thread(target=HIST.index_all, name="syswatch-history",
+                     daemon=True).start()
+    threading.Thread(target=HIST.tail_loop, name="syswatch-tail",
+                     daemon=True).start()
+
     srv = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
-    print(f"SYSWATCH_DASHBOARD_READY on port {PORT}", flush=True)
+    log_event("server", "dashboard v2 ready on port %d" % PORT)
+    print("SYSWATCH_DASHBOARD_READY on port %d" % PORT, flush=True)
     srv.serve_forever()
+
+
+if __name__ == "__main__":
+    main()
+
