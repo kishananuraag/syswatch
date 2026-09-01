@@ -114,6 +114,7 @@ pub fn run() {
     }
 
     let mut collector = Collector::new(cfg.top_n);
+    collector.print_startup_self_test();
     let mut tick: u64 = 0;
 
     // Define view state

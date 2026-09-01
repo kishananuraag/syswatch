@@ -40,6 +40,11 @@ header { display:flex; align-items:center; gap:14px; flex-wrap:wrap;
 
 canvas.chart { width:100%; height:150px; display:block; }
 canvas.tall { height:210px; }
+/* Chart.js responsive:true + maintainAspectRatio:false will set canvas height
+   from the parent container. Without an explicit wrapper height the canvas
+   grows unbounded as the page renders. Pin the wrapper, not the canvas. */
+.chart-wrap { position:relative; width:100%; height:150px; }
+.chart-wrap.tall { height:210px; }
 
 /* per-core bars */
 .core { display:grid; grid-template-columns:26px 1fr 38px; gap:9px;

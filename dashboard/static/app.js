@@ -168,7 +168,7 @@ function renderTemps(d) {
       cell = document.createElement("div");
       cell.id = "tc" + i;
       cell.innerHTML = '<div style="font-size:11px;color:#7C8896;margin-bottom:4px">' +
-        escapeHtml(t.label) + '</div><canvas id="tch' + i + '" class="chart" style="height:70px"></canvas>';
+        escapeHtml(t.label) + '</div><div class="chart-wrap" style="height:70px"><canvas id="tch' + i + '" class="chart"></canvas></div>';
       grid.appendChild(cell);
     }
     cell.querySelector("div").textContent =

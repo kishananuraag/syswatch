@@ -21,7 +21,7 @@
     <h2>CPU total
       <span style="text-transform:none;letter-spacing:0;font-weight:400"
             id="cpuMeta"></span></h2>
-    <canvas id="cpuChart" class="chart" style="height:150px"></canvas>
+    <div class="chart-wrap"><canvas id="cpuChart" class="chart"></canvas></div>
   </div>
 
   <!-- CPU PER CORE -->
@@ -36,7 +36,7 @@
     <div class="big" id="ramBig">&ndash;</div>
     <div class="subval" id="ramSub"></div>
     <div class="gauge"><div class="fill" id="ramFill"></div></div>
-    <canvas id="ramChart" class="chart" style="height:110px"></canvas>
+    <div class="chart-wrap" style="height:110px"><canvas id="ramChart" class="chart"></canvas></div>
     <div class="subval" id="swapSub"></div>
   </div>
 
@@ -45,7 +45,7 @@
     <h2>Network</h2>
     <div class="big mono" id="netBig">&ndash;</div>
     <div class="subval" id="netSub"></div>
-    <canvas id="netChart" class="chart" style="height:110px"></canvas>
+    <div class="chart-wrap" style="height:110px"><canvas id="netChart" class="chart"></canvas></div>
   </div>
 
   <!-- ALERTS -->

@@ -65,6 +65,7 @@ mod imp {
         crate::logging::prune(cfg.retention_days);
 
         let mut collector = crate::stats::Collector::new(cfg.top_n);
+        collector.print_startup_self_test();
         while !SERVICE_STOPPED.load(Ordering::SeqCst) {
             collector.refresh();
             let snap = collector.snapshot(cfg.temp);

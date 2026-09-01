@@ -14,3 +14,11 @@ toml = "0.8"
 
 [target.'cfg(windows)'.dependencies]
 windows-service = "0.7"
+
+[lib]
+name = "syswatch"
+path = "src/lib.rs"
+
+[[bin]]
+name = "syswatch"
+path = "src/main.rs"
