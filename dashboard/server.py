@@ -541,12 +541,45 @@ class Handler(BaseHTTPRequestHandler):
             raw = list(HIST.pts)
         pts = bucketize(raw, RANGES[rng], now)
         labels = [p["ts"] for p in pts]
+        # Build per-sensor series from the bucketed points (each point has
+        # a parallel `temps` array). Only sensors present in the LAST point
+        # are projected out, so labels align with temps[0..n-1] of every
+        # earlier point (None for missing). WHY: the chart needs a stable
+        # sensor list — using the last point means new sensors appear
+        # automatically, and missing values are nulled.
+        n_sensors = 0
+        for p in reversed(pts):
+            if p.get("temps"):
+                n_sensors = len(p["temps"])
+                break
+        temp_series = []
+        for i in range(n_sensors):
+            temp_series.append([p.get("temps", [None] * n_sensors)[i] for p in pts])
+        # Sensor labels are best-effort from sensors.json (sensor research map).
+        sensor_labels = []
+        try:
+            sp = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sensors.json")
+            if os.path.exists(sp):
+                with open(sp) as f:
+                    sm = json.load(f)
+                # Preserve insertion order: list-valued fields are label arrays
+                for key in ("labels", "names", "sensors"):
+                    v = sm.get(key)
+                    if isinstance(v, list) and v:
+                        sensor_labels = list(v)[:n_sensors]
+                        break
+        except Exception:
+            sensor_labels = []
+        # Pad labels if sensors.json had fewer
+        while len(sensor_labels) < n_sensors:
+            sensor_labels.append("Sensor " + str(len(sensor_labels) + 1))
         out = {"range": rng, "labels": labels, "points": pts,
                "series": {"cpu": [p["cpu"] for p in pts],
                           "ram": [p["ram"] for p in pts],
                           "down_bps": [p["down_bps"] for p in pts],
                           "up_bps": [p["up_bps"] for p in pts]},
-               "temp_series": {}, "sensor_labels": [],
+               "temp_series": temp_series,
+               "sensor_labels": sensor_labels,
                "history_sources": {"collector_points": len(raw)}}
         self._json(out)
 

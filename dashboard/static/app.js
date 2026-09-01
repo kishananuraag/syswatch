@@ -50,6 +50,10 @@ function ds(label, data, color, fill) {
 }
 
 const charts = {}; // key -> Chart instance
+// Track latest labels + series so renderTemps() can build per-sensor charts
+// without an extra /api round-trip.
+let currentLabels = [];
+let currentSeries = { cpu: [], ram: [], down_bps: [], up_bps: [], tempC: {} };
 function updateChart(key, ctxId, labels, datasets, yOpts) {
   if (charts[key]) {
     charts[key].data.labels = labels;
@@ -139,6 +143,8 @@ function renderCurrent(d) {
 let tempChartKeys = [];
 function renderTemps(d) {
   const temps = d.temps_c || [];
+  // Cache so renderHistory() can re-render temp charts without a new /api call.
+  window.__lastTemps = temps;
   const area = $("tempArea");
   const note = $("tempNote");
   if (!temps.length) {
@@ -170,21 +176,72 @@ function renderTemps(d) {
   });
   while (grid.children.length > temps.length)
     grid.removeChild(grid.lastChild);
-  tempChartKeys = [];
+  // Rebuild chart list: destroy any charts whose cell index > temps.length, keep the rest.
+  const newKeys = [];
+  // Prefer history-driven labels (the bucketized range), else fall back to
+  // a single live label so the chart has SOMETHING to draw.
+  const liveLabel = [new Date().toTimeString().slice(0, 5)];
+  const labels = (currentLabels && currentLabels.length) ? currentLabels : liveLabel;
+  temps.forEach((t, i) => {
+    const key = "temp" + i;
+    newKeys.push(key);
+    // Pull this sensor's series from currentSeries (set by renderHistory).
+    // It is a parallel array; align with labels.
+    const series = (currentSeries.tempC && currentSeries.tempC[i]) || [];
+    const padded = labels.map((_, j) => (j < series.length ? series[j] : null));
+    const labelText = (currentSeries.sensorLabels && currentSeries.sensorLabels[i]) || t.label;
+    updateChart(
+      key,
+      "tch" + i,
+      labels,
+      [ds(labelText + " \u00b0C", padded, "#D29922", true)],
+      { suggestedMax: 90 }
+    );
+  });
+  // Destroy orphaned temp charts
+  tempChartKeys.forEach((k) => {
+    if (!newKeys.includes(k) && charts[k]) { charts[k].destroy(); delete charts[k]; }
+  });
+  tempChartKeys = newKeys;
 }
 
 /* -------------------------------------------------------------- history+net */
 function renderHistory(h) {
   const labels = (h.labels || []).map(hhmm);
+  const s = h.series || {};
+  // Update shared state for renderTemps() to consume
+  currentLabels = labels;
+  currentSeries = {
+    cpu: s.cpu || [],
+    ram: s.ram || [],
+    down_bps: s.down_bps || [],
+    up_bps: s.up_bps || [],
+    tempC: s.temp_series || [],
+    sensorLabels: s.sensor_labels || [],
+  };
+  // Clamp y on network chart so a one-time spike doesn't stretch scale to Gbps.
+  const netMax = (() => {
+    const all = (currentSeries.down_bps || []).concat(currentSeries.up_bps || []);
+    if (!all.length) return undefined;
+    let m = 0;
+    for (const v of all) if (v > m) m = v;
+    // Round up to next 100Kbps increment, but cap at 1Gbps
+    const step = 100000;
+    const cap = 1000000000;
+    return Math.min(cap, Math.ceil(m / step) * step);
+  })();
+  const netYOpts = netMax != null ? { suggestedMax: netMax } : {};
   updateChart("cpu", "cpuChart", labels,
-    [ds("CPU %", h.series ? h.series.cpu : [], "#58A6FF", true)],
+    [ds("CPU %", currentSeries.cpu, "#58A6FF", true)],
     { suggestedMax: 100, ticks: { maxTicksLimit: 5 } });
   updateChart("ram", "ramChart", labels,
-    [ds("RAM %", h.series ? h.series.ram : [], "#2EA043")],
+    [ds("RAM %", currentSeries.ram, "#2EA043")],
     { suggestedMax: 100 });
   updateChart("net", "netChart", labels,
-    [ds("down", h.series ? h.series.down_bps : [], "#58A6FF"),
-     ds("up", h.series ? h.series.up_bps : [], "#BC8CFF")], {});
+    [ds("down", currentSeries.down_bps, "#58A6FF"),
+     ds("up", currentSeries.up_bps, "#BC8CFF")], netYOpts);
+  // Re-render temp charts now that we have labels + tempC
+  renderTemps({ temps_c: (window.__lastTemps || []) });
 }
 
 /* ------------------------------------------------------------------- alerts */
@@ -256,8 +313,38 @@ refreshHistory();
 refreshAlerts();
 refreshLogs();
 tickClock();
-setInterval(refreshCurrent, 5000);
-setInterval(refreshHistory, 5000);
-setInterval(tickClock, 1000);
-setInterval(refreshAlerts, 15000);
-setInterval(refreshLogs, 5000);
+// Track interval IDs so we can clear them on tab hide / page unload.
+// Without this, hidden tabs keep fetching every 5s, ballooning CPU and RAM.
+const intervalIds = [
+  setInterval(refreshCurrent, 5000),
+  setInterval(refreshHistory, 5000),
+  setInterval(tickClock, 1000),
+  setInterval(refreshAlerts, 15000),
+  setInterval(refreshLogs, 5000),
+];
+// Pause all refreshes while the tab is hidden, resume on return.
+let paused = false;
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && !paused) {
+    paused = true;
+    intervalIds.forEach((id) => clearInterval(id));
+  } else if (!document.hidden && paused) {
+    paused = false;
+    // Manual refresh then restart intervals
+    refreshCurrent();
+    refreshHistory();
+    refreshAlerts();
+    refreshLogs();
+    intervalIds[0] = setInterval(refreshCurrent, 5000);
+    intervalIds[1] = setInterval(refreshHistory, 5000);
+    intervalIds[2] = setInterval(tickClock, 1000);
+    intervalIds[3] = setInterval(refreshAlerts, 15000);
+    intervalIds[4] = setInterval(refreshLogs, 5000);
+  }
+});
+// Final cleanup on unload
+window.addEventListener("beforeunload", () => {
+  intervalIds.forEach((id) => clearInterval(id));
+  // Destroy all charts so their canvas listeners are released
+  Object.keys(charts).forEach((k) => { if (charts[k]) { charts[k].destroy(); delete charts[k]; } });
+});
