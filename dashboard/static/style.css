@@ -6,7 +6,7 @@
 }
 * { box-sizing:border-box; margin:0; padding:0; }
 html,body { background:var(--bg); color:var(--fg);
-  font:14px/1.45 "Segoe UI",-apple-system,sans-serif; }
+  font:14px/1.45 "Consolas","Segoe UI",-apple-system,sans-serif; }
 body { padding:18px 22px 12px; max-width:1440px; margin:0 auto; }
 h1 { font-size:19px; font-weight:600; letter-spacing:.02em; }
 .mono { font-family:Consolas,Menlo,monospace; }
@@ -22,7 +22,7 @@ header { display:flex; align-items:center; gap:14px; flex-wrap:wrap;
 .chips button { background:transparent; border:1px solid var(--border); color:var(--dim);
   border-radius:999px; font-size:11px; padding:3px 11px; cursor:pointer; transition:.15s; }
 .chips button:hover { color:var(--fg); border-color:var(--dim); }
-.chips button.active { background:var(--red); border-color:var(--red); color:#fff; font-weight:600; }
+.chips button.active { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; }
 
 .grid { display:grid; gap:14px;
   grid-template-columns:repeat(12,1fr); }

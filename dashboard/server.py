@@ -364,12 +364,19 @@ def sampler_loop(sampler):
                                "down_bps": snap["net"]["down_bps"],
                                "up_bps": snap["net"]["up_bps"],
                                "temps": [t["c"] for t in snap["temps_c"]]})
-            t_write_start = time.monotonic()
-            f.write(line)
-            f.write("\n")
-            # Flush every line so a crash doesn't lose today's data. At 1s
-            # cadence the fsync-per-line cost is negligible (a few us).
-            f.flush()
+            # Write one JSON line to today's file. flush() pushes bytes
+            # to the OS buffer; the OS is responsible for getting them to
+            # disk. We do NOT call os.fsync() per tick — on Windows fsync
+            # can take 5-7s, which would throttle the 1s sampler. Daily
+            # rotation is the durability boundary; the OS buffer survives
+            # crashes well enough for an in-memory ring-buffered history.
+            try:
+                f.write(line)
+                f.write("\n")
+                f.flush()
+            except Exception as _we:
+                log_event("sampler", "WRITE_FAIL n=%d: %r" % (n, _we))
+                raise
             n += 1
             # Once-a-minute summary so the logs strip stays readable.
             if n % 60 == 1:
