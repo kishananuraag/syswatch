@@ -55,6 +55,85 @@ canvas.tall { height:210px; }
   background:linear-gradient(90deg,var(--accent),#79C0FF); border-radius:4px; transition:width .5s; }
 .core .val { text-align:right; color:var(--fg); }
 
+/* ============================================================
+   Range chips (S12.3): one row of [1m 5m 15m 1h 6h 1d 7d 30d 1y]
+   sits above every chart. The active chip uses --accent. Plain
+   English: "click a button to see a longer or shorter time window".
+   ============================================================ */
+.range-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 6px 0 8px 0;
+  font-family: Consolas, "Cascadia Code", monospace;
+}
+.range-chips .chip {
+  background: transparent;
+  border: 1px solid var(--panel, #161B22);
+  color: var(--muted, #8B949E);
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1.4;
+  transition: color .12s ease, border-color .12s ease, background .12s ease;
+  user-select: none;
+}
+.range-chips .chip:hover {
+  color: var(--text, #E6EDF3);
+  border-color: var(--muted, #8B949E);
+}
+.range-chips .chip:focus-visible {
+  outline: 1px solid var(--accent, #58A6FF);
+  outline-offset: 1px;
+}
+.range-chips .chip.active {
+  background: var(--accent, #58A6FF);
+  color: var(--bg, #0E1116);
+  border-color: var(--accent, #58A6FF);
+  font-weight: 600;
+}
+
+/* ============================================================
+   Empty state (S12.3): when a chart has zero points in the
+   chosen range, we show a small icon + a plain-English line
+   instead of an empty axis frame that implies broken data.
+   ============================================================ */
+.chart-wrap {
+  position: relative;  /* anchor for the absolutely-positioned overlay */
+}
+.empty-state {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--muted, #8B949E);
+  background: rgba(14, 17, 22, 0.72);  /* --bg at ~72% so the empty axis shows through faintly */
+  pointer-events: none;
+  font-family: Consolas, "Cascadia Code", monospace;
+}
+.empty-state[hidden] { display: none; }
+.empty-state .empty-icon {
+  width: 48px;
+  height: 48px;
+  color: var(--muted, #8B949E);
+  opacity: 0.85;
+}
+.empty-state .empty-text {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+.empty-state .empty-detail {
+  margin: 0;
+  font-size: 10px;
+  opacity: 0.7;
+}
+
 /* ram gauge */
 .gauge { height:12px; background:var(--panel2); border-radius:6px; overflow:hidden; margin:10px 0 4px; }
 .gauge .fill { height:100%; width:0%;

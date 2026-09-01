@@ -1,350 +1,370 @@
-/* syswatch dashboard — vanilla JS + Chart.js (local, no CDN dependency) */
-"use strict";
-
-const RANGES = ["10m", "15m", "1h", "2d", "5d", "7d"];
-let range = localStorage.getItem("syswatch_range") || "1h";
-if (!RANGES.includes(range)) range = "1h";
+// syswatch dashboard — S12.3 (range chips) on top of S12.1 (live sampler).
+// No new chart libraries. Chart.js (loaded via /static/chart.umd.min.js)
+// drives every chart. Range chips live above each chart and trigger a
+// per-target reload of /api/history?range=... .
 
 const $ = (id) => document.getElementById(id);
-const fmtBps = (v) => {
-  if (v == null || isNaN(v)) return "\u2013";
-  const u = ["bps", "Kbps", "Mbps", "Gbps"];
-  let i = 0;
-  while (v >= 1000 && i < u.length - 1) { v /= 1000; i++; }
-  return v.toFixed(1) + " " + u[i];
+const fmt = {
+  pct: (n) => (n == null || isNaN(n)) ? "\u2013" : n.toFixed(1) + "%",
+  bps: (n) => (n == null || isNaN(n)) ? "\u2013" : formatBps(n),
+  mb: (n) => (n == null || isNaN(n)) ? "\u2013" : n.toFixed(0),
 };
-const fmtGB = (b) => (b / 1073741824).toFixed(1);
-const hhmm = (iso) => new Date(iso).toTimeString().slice(0, 5);
+function formatBps(n) {
+  if (!n) return "0 b/s";
+  const u = ["b/s","KB/s","MB/s","GB/s"]; let i = 0;
+  while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
+  return n.toFixed(i === 0 ? 0 : 1) + " " + u[i];
+}
 
-/* ---------------------------------------------------------- Chart.js helpers */
-Chart.defaults.color = "#7C8896";
-Chart.defaults.borderColor = "rgba(35,43,54,.8)";
-Chart.defaults.font.family = "'Segoe UI',sans-serif";
-Chart.defaults.font.size = 10;
+// Plain-English time label for the "data starts \u2026" hint in empty states.
+function shortDate(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+// ---------- CHARTS ----------
+
+const charts = {};        // key -> Chart.js instance
+const emptyEls = {};      // data-empty id -> DOM overlay
+let tempChartKeys = [];   // active per-sensor temp chart keys for cleanup
+
+// Chart.js defaults
+Chart.defaults.color = "#E6EDF3";
+Chart.defaults.font.family = 'Consolas, "Cascadia Code", monospace';
+Chart.defaults.font.size = 11;
 Chart.defaults.animation = false;
 
-function smoothLine(ctx, labels, datasets, yOpts = {}) {
-  return new Chart(ctx, {
+function makeLineChart(canvas, label, color, opts) {
+  opts = opts || {};
+  return new Chart(canvas, {
     type: "line",
-    data: { labels, datasets },
+    data: {
+      labels: [],
+      datasets: [{
+        label,
+        data: [],
+        borderColor: color,
+        backgroundColor: color + "22",
+        fill: opts.fill !== false,
+        borderWidth: 1.7,
+        pointRadius: 0,
+        tension: 0.4,
+        spanGaps: true,
+      }],
+    },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       interaction: { mode: "index", intersect: false },
       plugins: { legend: { display: false } },
       scales: {
-        x: { ticks: { maxTicksLimit: 6, maxRotation: 0 }, grid: { display: false } },
-        y: Object.assign({ beginAtZero: true, ticks: { maxTicksLimit: 5 } }, yOpts),
+        x: { ticks: { maxTicksLimit: 6, maxRotation: 0, autoSkip: true }, grid: { color: "rgba(139,148,158,0.08)" } },
+        y: Object.assign({ beginAtZero: true, ticks: { maxTicksLimit: 5 } }, opts.y || {}),
       },
-      elements: { point: { radius: 0 }, line: { tension: 0.4, borderWidth: 1.7 } },
     },
   });
 }
 
-function ds(label, data, color, fill) {
-  return {
-    label, data, borderColor: color,
-    backgroundColor: color + "22",
-    fill: !!fill,
-  };
+// ---------- RANGE / EMPTY STATE WIRING ----------
+
+// Per-chart target state. Defaults: 1h for CPU/RAM/Net, 15m for temps.
+const TARGETS = {
+  cpu:   { range: "1h" },
+  ram:   { range: "1h" },
+  net:   { range: "1h" },
+  temps: { range: "15m" },
+};
+
+function setActiveChip(target, range) {
+  document.querySelectorAll('.range-chips[data-range-target="' + target + '"] .chip')
+    .forEach((b) => b.classList.toggle("active", b.dataset.range === range));
 }
 
-const charts = {}; // key -> Chart instance
-// Track latest labels + series so renderTemps() can build per-sensor charts
-// without an extra /api round-trip.
-let currentLabels = [];
-let currentSeries = { cpu: [], ram: [], down_bps: [], up_bps: [], tempC: {} };
-function updateChart(key, ctxId, labels, datasets, yOpts) {
-  if (charts[key]) {
-    charts[key].data.labels = labels;
-    charts[key].data.datasets = datasets;
-    if (yOpts && yOpts.suggestedMax != null)
-      charts[key].options.scales.y.suggestedMax = yOpts.suggestedMax;
-    charts[key].update("none");
+function showEmpty(target, message) {
+  const el = emptyEls[target];
+  if (!el) return;
+  el.hidden = false;
+  const t = el.querySelector(".empty-text");
+  if (t && message) t.textContent = message;
+  const d = el.querySelector(".empty-detail");
+  if (d) d.style.display = "none";
+}
+
+function setEmptyDetail(target, msg) {
+  const el = emptyEls[target];
+  if (!el) return;
+  const d = el.querySelector(".empty-detail");
+  if (!d) return;
+  if (msg) { d.textContent = msg; d.style.display = ""; }
+  else { d.textContent = ""; d.style.display = "none"; }
+}
+
+function hideEmpty(target) {
+  const el = emptyEls[target];
+  if (!el) return;
+  el.hidden = true;
+}
+
+async function loadHistory(target) {
+  const t = TARGETS[target];
+  if (!t) return;
+  const url = "/api/history?range=" + encodeURIComponent(t.range);
+  let data;
+  try {
+    const r = await fetch(url, { cache: "no-store" });
+    data = await r.json();
+  } catch (e) {
+    showEmpty(target, "Couldn't reach the dashboard");
     return;
   }
-  charts[key] = smoothLine($(ctxId), labels, datasets, yOpts || {});
-}
 
-/* ------------------------------------------------------------ range selector */
-(function buildChips() {
-  const bar = $("rangeChips");
-  RANGES.forEach((r) => {
-    const b = document.createElement("button");
-    b.textContent = r;
-    if (r === range) b.classList.add("active");
-    b.onclick = () => {
-      range = r;
-      localStorage.setItem("syswatch_range", r);
-      bar.querySelectorAll("button").forEach((x) => x.classList.remove("active"));
-      b.classList.add("active");
-      refreshHistory();
-    };
-    bar.appendChild(b);
-  });
-})();
-
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g,
-    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-}
-
-/* ---------------------------------------------------------------- rendering */
-function renderCurrent(d) {
-  const cpu = d.cpu ? d.cpu.total_pct : null;
-  $("cpuBig").innerHTML = (cpu == null ? "\u2013" : cpu.toFixed(1)) +
-    '<span class="unit">%</span>';
-  const meta = [];
-  if (d.cpu && d.cpu.freq_mhz) meta.push((d.cpu.freq_mhz / 1000).toFixed(2) + " GHz");
-  if (d.proc_count) meta.push(d.proc_count + " procs");
-  $("cpuMeta").textContent = meta.join(" \u00b7 ");
-
-  const cores = (d.cpu && d.cpu.per_core_pct) || [];
-  $("coreCount").textContent = cores.length + " cores";
-  $("cores").innerHTML = cores.map((p, i) =>
-    '<div class="core"><span>C' + i + '</span>' +
-    '<div class="barwrap"><div class="barfill" style="width:' +
-    Math.min(p, 100).toFixed(1) + '%"></div></div>' +
-    '<span class="val">' + Math.round(p) + '%</span></div>'
-  ).join("") || '<span class="na">not available</span>';
-
-  if (d.ram && d.ram.total_bytes) {
-    const pct = d.ram.pct;
-    $("ramBig").innerHTML = pct.toFixed(1) + '<span class="unit">%</span>';
-    $("ramSub").textContent =
-      fmtGB(d.ram.used_bytes) + " / " + fmtGB(d.ram.total_bytes) + " GB used";
-    $("ramFill").style.width = Math.min(pct, 100) + "%";
-    $("swapSub").textContent = d.ram.swap_total_bytes ?
-      "swap: " + fmtGB(d.ram.swap_used_bytes) + " / " +
-      fmtGB(d.ram.swap_total_bytes) + " GB" : "";
-  } else {
-    $("ramBig").textContent = "\u2013";
-    $("ramSub").textContent = "not available";
+  // Empty-state path: API reports zero in-range points.
+  if (data && data.empty) {
+    showEmpty(target, "No data in this range yet");
+    if (data.data_started_iso) {
+      setEmptyDetail(target, "Records start " + shortDate(data.data_started_iso));
+    } else {
+      setEmptyDetail(target, "");
+    }
+    // Zero out charts so axes don't mislead.
+    if (target === "cpu" && charts.cpu) {
+      charts.cpu.data.labels = []; charts.cpu.data.datasets[0].data = []; charts.cpu.update();
+    }
+    if (target === "ram" && charts.ram) {
+      charts.ram.data.labels = []; charts.ram.data.datasets[0].data = []; charts.ram.update();
+    }
+    if (target === "net" && charts.net) {
+      charts.net.data.labels = []; charts.net.data.datasets[0].data = []; charts.net.update();
+    }
+    if (target === "temps") clearTempCharts();
+    return;
   }
 
-  const net = d.net || {};
-  $("netBig").innerHTML =
-    "&darr; " + fmtBps(net.down_bps) + "<br>&uarr; " + fmtBps(net.up_bps);
-  const topIface = ((net.ifaces || [])[0] || {});
-  $("netSub").textContent = topIface.name ? ("via " + topIface.name) : "";
+  hideEmpty(target);
 
-  const row = (p) => "<tr><td>" + p.pid + "</td><td>" + escapeHtml(p.name) +
-    '</td><td class="num">' + (p.cpu_pct || 0).toFixed(1) +
-    '</td><td class="num">' + (p.mem_mb || 0).toFixed(0) + "</td></tr>";
-  const pc = (d.processes && d.processes.by_cpu) || [];
-  const pm = (d.processes && d.processes.by_mem) || [];
-  $("procCpu").innerHTML = pc.map(row).join("") ||
-    '<tr><td colspan="4" class="empty">waiting for data\u2026</td></tr>';
-  $("procMem").innerHTML = pm.map(row).join("") ||
-    '<tr><td colspan="4" class="empty">waiting for data\u2026</td></tr>';
+  // CPU
+  if (target === "cpu" && charts.cpu) {
+    const pts = data.points || [];
+    charts.cpu.data.labels = pts.map((p) => p.ts);
+    charts.cpu.data.datasets[0].data = pts.map((p) => p.cpu);
+    charts.cpu.update();
+  }
+
+  // RAM
+  if (target === "ram" && charts.ram) {
+    const pts = data.points || [];
+    charts.ram.data.labels = pts.map((p) => p.ts);
+    charts.ram.data.datasets[0].data = pts.map((p) => p.ram);
+    charts.ram.update();
+  }
+
+  // Network: one chart showing down_bps.
+  if (target === "net" && charts.net) {
+    const pts = data.points || [];
+    charts.net.data.labels = pts.map((p) => p.ts);
+    charts.net.data.datasets[0].data = pts.map((p) => p.down_bps);
+    charts.net.update();
+  }
+
+  // Temperatures: one mini chart per sensor (sensor_labels + temp_series).
+  if (target === "temps") {
+    renderTempCharts(data);
+  }
 }
 
-/* ------------------------------------------------------------- temperatures */
-let tempChartKeys = [];
-function renderTemps(d) {
-  const temps = d.temps_c || [];
-  // Cache so renderHistory() can re-render temp charts without a new /api call.
-  window.__lastTemps = temps;
+function clearTempCharts() {
+  tempChartKeys.forEach((k) => { if (charts[k]) { charts[k].destroy(); delete charts[k]; } });
+  tempChartKeys = [];
+  const grid = $("tempGrid");
+  if (grid) grid.innerHTML = "";
+}
+
+function renderTempCharts(data) {
+  const sl = data.sensor_labels || [];
+  const ts = data.temp_series || [];
+  const labels = (data.points || []).map((p) => p.ts);
   const area = $("tempArea");
-  const note = $("tempNote");
-  if (!temps.length) {
-    note.textContent = "";
+  if (!area) return;
+
+  if (!sl.length) {
+    clearTempCharts();
     area.innerHTML = '<span class="na">no sensors exposed on this machine ' +
       '(Windows hides them from psutil; install LibreHardwareMonitor to enable)</span>';
-    tempChartKeys.forEach((k) => { if (charts[k]) { charts[k].destroy(); delete charts[k]; } });
-    tempChartKeys = [];
     return;
   }
-  // one small smooth chart per sensor, laid out in a mini-grid
-  if (!area.dataset.grid) {
+
+  // Build (or reuse) a responsive grid of mini-canvases.
+  let grid = $("tempGrid");
+  if (!grid) {
     area.innerHTML = '<div id="tempGrid" style="display:grid;' +
-      'grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px"></div>';
-    area.dataset.grid = "1";
+      'grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px"></div>';
+    grid = $("tempGrid");
   }
-  const grid = $("tempGrid");
-  temps.forEach((t, i) => {
-    let cell = document.getElementById("tc" + i);
+  const newKeys = [];
+  sl.forEach((label, i) => {
+    const key = "temp_" + i;
+    let cell = $("tc" + i);
     if (!cell) {
       cell = document.createElement("div");
       cell.id = "tc" + i;
-      cell.innerHTML = '<div style="font-size:11px;color:#7C8896;margin-bottom:4px">' +
-        escapeHtml(t.label) + '</div><div class="chart-wrap" style="height:70px"><canvas id="tch' + i + '" class="chart"></canvas></div>';
+      cell.style.cssText = "background:rgba(22,27,34,0.5);border:1px solid rgba(139,148,158,0.15);" +
+        "border-radius:4px;padding:8px;";
+      cell.innerHTML = '<div style="font-size:11px;color:#8B949E;margin-bottom:4px;' +
+        'text-transform:none;letter-spacing:0">' + esc(label) + '</div>' +
+        '<div style="height:70px"><canvas id="tch' + i + '"></canvas></div>';
       grid.appendChild(cell);
+    } else {
+      const lblEl = cell.querySelector(".temp-label");
+      if (lblEl) lblEl.textContent = label;
     }
-    cell.querySelector("div").textContent =
-      t.label + " \u2014 " + t.c.toFixed(1) + "\u00b0C";
-  });
-  while (grid.children.length > temps.length)
-    grid.removeChild(grid.lastChild);
-  // Rebuild chart list: destroy any charts whose cell index > temps.length, keep the rest.
-  const newKeys = [];
-  // Prefer history-driven labels (the bucketized range), else fall back to
-  // a single live label so the chart has SOMETHING to draw.
-  const liveLabel = [new Date().toTimeString().slice(0, 5)];
-  const labels = (currentLabels && currentLabels.length) ? currentLabels : liveLabel;
-  temps.forEach((t, i) => {
-    const key = "temp" + i;
-    newKeys.push(key);
-    // Pull this sensor's series from currentSeries (set by renderHistory).
-    // It is a parallel array; align with labels.
-    const series = (currentSeries.tempC && currentSeries.tempC[i]) || [];
+    const series = (ts[i] || []).slice();
+    // Pad series to align with labels.
     const padded = labels.map((_, j) => (j < series.length ? series[j] : null));
-    const labelText = (currentSeries.sensorLabels && currentSeries.sensorLabels[i]) || t.label;
-    updateChart(
-      key,
-      "tch" + i,
-      labels,
-      [ds(labelText + " \u00b0C", padded, "#D29922", true)],
-      { suggestedMax: 90 }
-    );
+    if (!charts[key]) {
+      charts[key] = makeLineChart($("tch" + i), label + " \u00b0C", "#D29922");
+      charts[key].options.scales.y.suggestedMax = 90;
+    }
+    charts[key].data.labels = labels;
+    charts[key].data.datasets[0].data = padded;
+    charts[key].update();
+    newKeys.push(key);
   });
-  // Destroy orphaned temp charts
+  // Destroy orphaned temp charts (sensor count shrunk).
   tempChartKeys.forEach((k) => {
     if (!newKeys.includes(k) && charts[k]) { charts[k].destroy(); delete charts[k]; }
   });
   tempChartKeys = newKeys;
 }
 
-/* -------------------------------------------------------------- history+net */
-function renderHistory(h) {
-  const labels = (h.labels || []).map(hhmm);
-  const s = h.series || {};
-  // Update shared state for renderTemps() to consume
-  currentLabels = labels;
-  currentSeries = {
-    cpu: s.cpu || [],
-    ram: s.ram || [],
-    down_bps: s.down_bps || [],
-    up_bps: s.up_bps || [],
-    tempC: s.temp_series || [],
-    sensorLabels: s.sensor_labels || [],
-  };
-  // Clamp y on network chart so a one-time spike doesn't stretch scale to Gbps.
-  const netMax = (() => {
-    const all = (currentSeries.down_bps || []).concat(currentSeries.up_bps || []);
-    if (!all.length) return undefined;
-    let m = 0;
-    for (const v of all) if (v > m) m = v;
-    // Round up to next 100Kbps increment, but cap at 1Gbps
-    const step = 100000;
-    const cap = 1000000000;
-    return Math.min(cap, Math.ceil(m / step) * step);
-  })();
-  const netYOpts = netMax != null ? { suggestedMax: netMax } : {};
-  updateChart("cpu", "cpuChart", labels,
-    [ds("CPU %", currentSeries.cpu, "#58A6FF", true)],
-    { suggestedMax: 100, ticks: { maxTicksLimit: 5 } });
-  updateChart("ram", "ramChart", labels,
-    [ds("RAM %", currentSeries.ram, "#2EA043")],
-    { suggestedMax: 100 });
-  updateChart("net", "netChart", labels,
-    [ds("down", currentSeries.down_bps, "#58A6FF"),
-     ds("up", currentSeries.up_bps, "#BC8CFF")], netYOpts);
-  // Re-render temp charts now that we have labels + tempC
-  renderTemps({ temps_c: (window.__lastTemps || []) });
+function bindRangeChips() {
+  document.querySelectorAll(".range-chips[data-range-target]").forEach((row) => {
+    const target = row.dataset.rangeTarget;
+    const initial = TARGETS[target] && TARGETS[target].range;
+    if (initial) setActiveChip(target, initial);
+    row.addEventListener("click", (ev) => {
+      const btn = ev.target.closest(".chip");
+      if (!btn || !row.contains(btn)) return;
+      const rng = btn.dataset.range;
+      if (!rng) return;
+      TARGETS[target].range = rng;
+      setActiveChip(target, rng);
+      loadHistory(target);
+    });
+  });
 }
 
-/* ------------------------------------------------------------------- alerts */
-function renderAlerts(al) {
-  const rules = al.rules || [];
-  $("alerts").innerHTML = rules.length ? rules.map((r) => {
-    const fired = !!r.last_fired;
-    return '<div class="alertrow"><span class="dot ' +
-      (fired ? "fired" : "ok") + '"></span>' +
-      "<div><b>" + escapeHtml(r.metric) + "</b> " + escapeHtml(r.op) + " " +
-      r.value + " for " + r.duration_secs + "s</div>" +
-      '<span class="alertmeta">' +
-      (fired ? "last fired " + new Date(r.last_fired).toLocaleString() : "armed \u00b7 not fired")
-      + "</span></div>";
-  }).join("") : '<span class="na">no alert rules configured</span>';
+function startHistoryPollers() {
+  Object.keys(TARGETS).forEach(loadHistory);
+  setInterval(() => {
+    Object.keys(TARGETS).forEach(loadHistory);
+  }, 5000);
 }
 
-/* --------------------------------------------------------------- logs strip */
-function renderLogs(d) {
-  $("logCount").textContent = d.count != null ? ("(" + d.count + " in buffer)") : "";
-  const el = $("logLines");
-  const stick = el.scrollTop + el.clientHeight >= el.scrollHeight - 8;
-  el.innerHTML = (d.events || []).map((e) => {
-    const t = new Date(e.ts).toTimeString().slice(0, 8);
-    const cls = e.msg && e.msg.startsWith("FIRE") ? " class=\"warn\"" : "";
-    return '<div' + cls + '><span class="t">' + t + "</span> [" +
-      escapeHtml(e.src) + "] " + escapeHtml(e.msg) + "</div>";
-  }).join("") || '<span class="na">no events yet</span>';
-  if (stick) el.scrollTop = el.scrollHeight;
-}
+// ---------- LIVE CURRENT ----------
 
-/* ------------------------------------------------------------ refresh loops */
-async function fetchJson(url) {
-  const r = await fetch(url);
-  if (!r.ok) throw new Error(url + " -> " + r.status);
-  return r.json();
-}
-
-async function refreshCurrent() {
+async function loadCurrent() {
   try {
-    renderCurrent(await fetchJson("/api/current"));
-    $("status").textContent = "live \u00b7 " + new Date().toTimeString().slice(0, 8);
-    $("status").style.color = "";
+    const r = await fetch("/api/current", { cache: "no-store" });
+    const d = await r.json();
+    $("status").textContent = "live";
+    $("cpuBig").innerHTML = fmt.pct(d.cpu) + "<span class=\"unit\">%</span>";
+    $("ramBig").textContent = (d.ram || 0).toFixed(0) + " %";
+    $("ramSub").textContent =
+      (d.ram_used_mb || 0).toFixed(0) + " MB / " +
+      (d.ram_total_mb || 0).toFixed(0) + " MB";
+    const ramPct = Math.max(0, Math.min(100, d.ram || 0));
+    $("ramFill").style.width = ramPct + "%";
+
+    $("netBig").textContent = fmt.bps((d.down_bps || 0) + (d.up_bps || 0));
+    $("netSub").textContent = "down " + fmt.bps(d.down_bps || 0) +
+                              "  /  up " + fmt.bps(d.up_bps || 0);
+
+    if (Array.isArray(d.cores)) renderCores(d.cores);
+    $("coreCount").textContent = "(" + (d.cores ? d.cores.length : 0) + ")";
+    renderProcs(d.top_cpu || [], "procCpu", "cpu");
+    renderProcs(d.top_mem || [], "procMem", "mem");
+    $("clockTime").textContent = new Date().toLocaleTimeString();
+    if (d.swap_used_mb != null) {
+      $("swapSub").textContent = "swap " + d.swap_used_mb.toFixed(0) + " MB";
+    }
+    // Cache live temps so future history refreshes can rebuild temp charts.
+    window.__lastTemps = d.temps_c || [];
   } catch (e) {
-    $("status").textContent = "waiting for data\u2026";
-    $("status").style.color = "#E10600";
+    $("status").textContent = "offline";
   }
 }
 
-async function refreshHistory() {
-  try { renderHistory(await fetchJson("/api/history?range=" + range)); }
-  catch (e) { /* keep last good chart */ }
+function renderCores(cores) {
+  const root = $("cores");
+  if (!root) return;
+  root.innerHTML = "";
+  cores.forEach((c) => {
+    const row = document.createElement("div");
+    row.className = "core";
+    row.innerHTML =
+      '<div class="label">C' + c.idx + '</div>' +
+      '<div class="barwrap"><div class="bar" style="width:' + c.pct.toFixed(1) + '%"></div></div>' +
+      '<div class="val">' + c.pct.toFixed(1) + '%</div>';
+    root.appendChild(row);
+  });
 }
 
-async function refreshAlerts() {
-  try { renderAlerts(await fetchJson("/api/alerts")); } catch (e) {}
-}
-
-async function refreshLogs() {
-  try { renderLogs(await fetchJson("/api/logs?limit=50")); } catch (e) {}
-}
-
-function tickClock() {
-  $("clockTime").textContent = new Date().toLocaleTimeString();
-}
-
-refreshCurrent();
-refreshHistory();
-refreshAlerts();
-refreshLogs();
-tickClock();
-// Track interval IDs so we can clear them on tab hide / page unload.
-// Without this, hidden tabs keep fetching every 5s, ballooning CPU and RAM.
-const intervalIds = [
-  setInterval(refreshCurrent, 5000),
-  setInterval(refreshHistory, 5000),
-  setInterval(tickClock, 1000),
-  setInterval(refreshAlerts, 15000),
-  setInterval(refreshLogs, 5000),
-];
-// Pause all refreshes while the tab is hidden, resume on return.
-let paused = false;
-document.addEventListener("visibilitychange", () => {
-  if (document.hidden && !paused) {
-    paused = true;
-    intervalIds.forEach((id) => clearInterval(id));
-  } else if (!document.hidden && paused) {
-    paused = false;
-    // Manual refresh then restart intervals
-    refreshCurrent();
-    refreshHistory();
-    refreshAlerts();
-    refreshLogs();
-    intervalIds[0] = setInterval(refreshCurrent, 5000);
-    intervalIds[1] = setInterval(refreshHistory, 5000);
-    intervalIds[2] = setInterval(tickClock, 1000);
-    intervalIds[3] = setInterval(refreshAlerts, 15000);
-    intervalIds[4] = setInterval(refreshLogs, 5000);
+function renderProcs(rows, id, key) {
+  const tb = $(id);
+  if (!tb) return;
+  if (!rows.length) {
+    tb.innerHTML = '<tr><td colspan="4" class="empty">no data</td></tr>';
+    return;
   }
-});
-// Final cleanup on unload
-window.addEventListener("beforeunload", () => {
-  intervalIds.forEach((id) => clearInterval(id));
-  // Destroy all charts so their canvas listeners are released
-  Object.keys(charts).forEach((k) => { if (charts[k]) { charts[k].destroy(); delete charts[k]; } });
+  tb.innerHTML = rows.map((r) => {
+    const v = key === "cpu" ? fmt.pct(r.cpu) : fmt.mb(r.mem_mb) + " MB";
+    return '<tr><td>' + r.pid + '</td><td>' + esc(r.name) +
+           '</td><td class="num">' + v + '</td><td class="num">' +
+           (key === "cpu" ? fmt.mb(r.mem_mb) + " MB" : fmt.pct(r.cpu)) + '</td></tr>';
+  }).join("");
+}
+
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+// ---------- LOGS ----------
+
+async function loadLogs() {
+  try {
+    const r = await fetch("/api/logs?limit=50", { cache: "no-store" });
+    const d = await r.json();
+    const lines = (d.lines || []).map((l) => esc(l));
+    $("logLines").innerHTML = lines.join("<br>") || "<span class=\"na\">no events</span>";
+    $("logCount").textContent = "(" + lines.length + ")";
+  } catch (e) {
+    $("logLines").innerHTML = "<span class=\"na\">log fetch failed</span>";
+  }
+}
+
+// ---------- BOOT ----------
+
+window.addEventListener("DOMContentLoaded", () => {
+  charts.cpu = makeLineChart($("cpuChart"), "CPU", "#58A6FF");
+  charts.ram = makeLineChart($("ramChart"), "RAM", "#3FB950");
+  charts.net = makeLineChart($("netChart"), "Network", "#58A6FF", { fill: false });
+
+  // Cache empty-state overlay elements once.
+  document.querySelectorAll(".empty-state[data-empty]").forEach((el) => {
+    emptyEls[el.dataset.empty] = el;
+  });
+
+  bindRangeChips();
+  startHistoryPollers();
+
+  loadCurrent();
+  setInterval(loadCurrent, 2000);
+
+  loadLogs();
+  setInterval(loadLogs, 10000);
+
+  setInterval(() => { $("clockTime").textContent = new Date().toLocaleTimeString(); }, 1000);
 });

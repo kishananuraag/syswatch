@@ -1,25 +1,38 @@
 #!/usr/bin/env python3
-"""syswatch web dashboard v2 — live psutil sampler + rolling JSONL store + collector history.
+"""syswatch web dashboard v2 — live psutil sampler + daily JSONL store + collector history.
 
 Endpoints:
   /                     static/index.html
   /static/*             app.js, style.css, chart.umd.min.js (local copy)
   /api/current          live CPU total+per-core, RAM used/total/pct+swap,
                         top-5 processes by CPU and by RAM, net rates, temps, freq
-  /api/history?range=   10m|15m|1h|2d|5d|7d -> {points:[{ts,cpu,ram,...}], sensors:[...]}
+  /api/history?range=   1m|5m|15m|1h|6h|1d|7d|30d|1y -> {points:[{ts,cpu,ram,...}],
+                        series:{cpu,ram,...}, temp_series:[...], sensor_labels:[...]}
+                        Returns {empty:true, ...} (no points at all) when the
+                        range has zero data so the UI can show a clean
+                        "no data in this range yet" state.
   /api/logs             last N events: live sampler ticks + collector service events
                         + alert fires + server lifecycle, newest first
 
 Data sources: psutil for LIVE values; the Rust collector's JSONL snapshots in
 SYSWATCH_LOGS (default C:\\ProgramData\\syswatch\\logs) are indexed once in a
 background thread and tailed incrementally so /api/history serves his real
-3-day history without re-reading 226MB per request. The sampler also appends
-every tick to dashboard/data/samples.jsonl (rolling, MAX_STORE_LINES).
+3-day history without re-reading 226MB per request.
+
+Persistence (S12.2): the dashboard's own samples are written to a daily-rotating
+JSONL file under HISTORY_DIR (default dashboard/history/YYYY-MM-DD.jsonl). Files
+older than 7 days are gzipped in-place to keep disk usage sane at 1s cadence
+(~1.5 MB/day uncompressed, ~400 KB/day gzipped).
+
+S12.3: /api/history supports ranges from 1m to 1y with auto-downsampling to
+~500 points max so 1y of data stays a small JSON payload.
 
 Stdlib only except psutil.
 """
+import gzip
 import json
 import os
+import shutil
 import threading
 import time
 from datetime import datetime, timedelta, timezone
@@ -36,14 +49,21 @@ except ImportError:
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 DATA_DIR = os.environ.get("SYSWATCH_DATA", os.path.join(BASE_DIR, "data"))
-STORE_PATH = os.path.join(DATA_DIR, "samples.jsonl")
+# S12.2: history moved out of data/samples.jsonl into a daily-rotating dir.
+HISTORY_DIR = os.environ.get("SYSWATCH_HISTORY",
+                             os.path.join(BASE_DIR, "history"))
 COLLECTOR_LOGS = os.environ.get("SYSWATCH_LOGS", r"C:\ProgramData\syswatch\logs")
 
 PORT = int(os.environ.get("SYSWATCH_PORT", "8123"))
-SAMPLE_SECS = float(os.environ.get("SYSWATCH_SAMPLE_SECS", "5"))
-MAX_STORE_LINES = 17280  # ~24h at 5s; rolled on startup
-RANGES = {"10m": 600, "15m": 900, "1h": 3600, "2d": 172800, "5d": 432000, "7d": 604800}
-MAX_POINTS_PER_RANGE = 480
+# S12.2: 1s cadence is the default; env override exists only for tests.
+SAMPLE_SECS = float(os.environ.get("SYSWATCH_SAMPLE_SECS", "1"))
+# S12.3: ranges from 1m to 1y. "1m" is the only new ultra-short range; long
+# ranges (7d/30d/1y) are downsampled server-side to ~500 points max.
+RANGES = {"1m": 60, "5m": 300, "15m": 900, "1h": 3600, "6h": 21600,
+          "1d": 86400, "7d": 604800, "30d": 2592000, "1y": 31536000}
+# Soft target for chart point count per range. Short ranges keep every point
+# so 1m of data shows all ~60 ticks; long ranges downsample aggressively.
+MAX_POINTS_PER_RANGE = 500
 
 BOOT_TS = datetime.now(timezone.utc).isoformat(timespec="seconds")
 
@@ -105,7 +125,10 @@ def _wmi_sensors(namespace):
 
 
 _WMI_CACHE = {"ts": 0.0, "sensors": None}
-_WMI_TTL = 30.0  # seconds; matches the old cadence pre-S12.2 — S12.2 drops to 1s.
+# Cache WMI sensor reads for 5s. Sampling is now 1s, but a WMI query costs
+# ~5 ms; hammering it every tick would 5x the sampler CPU. 5s keeps the
+# temperature line fresh enough on a 1s chart (one new data point per 5 ticks).
+_WMI_TTL = 5.0
 
 
 def read_temperatures():
@@ -251,40 +274,126 @@ class Sampler:
 
 
 def roll_store():
-    """Keep only the newest MAX_STORE_LINES lines of the rolling store."""
+    """S12.2: legacy single-file store is gone. Kept as a no-op so callers that
+    expect it (e.g. main()) still work. The dashboard no longer rolls a JSONL
+    file at startup; daily files under HISTORY_DIR are self-managing."""
+    return None
+
+
+# --------------------------------------------------- daily-rotating JSONL store
+# Each line of HISTORY_DIR/YYYY-MM-DD.jsonl is one compact sampler tick:
+# {"ts","cpu","ram","down_bps","up_bps","temps":[...]}. Files older than
+# HISTORY_GZIP_AFTER_DAYS days are gzipped in-place to keep disk usage sane
+# (a day of 1s samples is ~1.5 MB uncompressed, ~400 KB gzipped).
+HISTORY_GZIP_AFTER_DAYS = 7
+
+
+def _history_path_for(day):
+    """Return the JSONL path for a given datetime (UTC)."""
+    name = day.strftime("%Y-%m-%d") + ".jsonl"
+    return os.path.join(HISTORY_DIR, name)
+
+
+def _history_path_for_today():
+    return _history_path_for(datetime.now(timezone.utc))
+
+
+def _gzip_old_files():
+    """Compress any *.jsonl in HISTORY_DIR whose date is older than the cutoff
+    and isn't already gzipped. Runs once per minute from the sampler loop so
+    the cost is negligible."""
     try:
-        with open(STORE_PATH, encoding="utf-8", errors="replace") as f:
-            lines = [l for l in f.read().splitlines() if l.strip()]
+        names = os.listdir(HISTORY_DIR)
     except OSError:
         return
-    if len(lines) > MAX_STORE_LINES:
-        tmp = STORE_PATH + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            f.write("\n".join(lines[-MAX_STORE_LINES:]) + "\n")
-        os.replace(tmp, STORE_PATH)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=HISTORY_GZIP_AFTER_DAYS)
+    for name in names:
+        if not name.endswith(".jsonl") or name.startswith("."):
+            continue
+        # parse YYYY-MM-DD.jsonl -> date
+        try:
+            day = datetime.strptime(name[:-6], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        except ValueError:
+            continue
+        if day >= cutoff:
+            continue
+        src = os.path.join(HISTORY_DIR, name)
+        dst = src + ".gz"
+        if os.path.exists(dst):
+            continue
+        try:
+            with open(src, "rb") as fin, gzip.open(dst, "wb", compresslevel=6) as fout:
+                shutil.copyfileobj(fin, fout)
+            os.remove(src)
+            log_event("history", "compressed %s -> %s.gz" % (name, name))
+        except OSError as e:
+            log_event("history", "gzip failed %s: %s" % (name, e))
 
 
 def sampler_loop(sampler):
-    """5s tick: sample psutil, append to store, log events, feed alerter."""
+    """S12.2: 1s tick (down from 5s). Sample psutil, append a compact JSONL line
+    to the daily file, log events, feed alerter, gzip files older than 7 days.
+
+    At 1s cadence this writes ~86,400 lines/day (~1.5 MB). The file is opened
+    once and held across ticks to avoid fsync per line. Appends are atomic
+    enough for our purposes (the OS may reorder within a single fd, but we
+    only ever read whole files via tail_newest())."""
     n = 0
+    last_gzip_mono = 0.0
+    GZIP_EVERY_SECS = 60.0
+    # Open today's file once. If the date flips while we're running, the
+    # next _today_path() call returns the new path; we detect the change and
+    # reopen. Keeps the hot path free of os.open overhead 86,400x/day.
+    current_path = _history_path_for_today()
+    f = None
     while True:
         try:
             snap = sampler.sample_once()
-            with open(STORE_PATH, "a", encoding="utf-8") as f:
-                f.write(json.dumps({"ts": snap["ts"], "cpu": snap["cpu"]["total_pct"],
-                                    "ram": snap["ram"]["pct"],
-                                    "down_bps": snap["net"]["down_bps"],
-                                    "up_bps": snap["net"]["up_bps"],
-                                    "temps": [t["c"] for t in snap["temps_c"]]}) + "\n")
+            # Roll the file handle if the day changed.
+            today = _history_path_for_today()
+            if today != current_path:
+                if f is not None:
+                    f.close()
+                current_path = today
+                f = None
+            if f is None:
+                os.makedirs(HISTORY_DIR, exist_ok=True)
+                f = open(current_path, "a", encoding="utf-8", buffering=8192)
+            line = json.dumps({"ts": snap["ts"], "cpu": snap["cpu"]["total_pct"],
+                               "ram": snap["ram"]["pct"],
+                               "down_bps": snap["net"]["down_bps"],
+                               "up_bps": snap["net"]["up_bps"],
+                               "temps": [t["c"] for t in snap["temps_c"]]})
+            t_write_start = time.monotonic()
+            f.write(line)
+            f.write("\n")
+            # Flush every line so a crash doesn't lose today's data. At 1s
+            # cadence the fsync-per-line cost is negligible (a few us).
+            f.flush()
             n += 1
-            if n % 12 == 1:  # ~once a minute
+            # Once-a-minute summary so the logs strip stays readable.
+            if n % 60 == 1:
                 c = snap["cpu"]["total_pct"]
                 r = snap["ram"]["pct"]
                 t = ("%d sensors" % len(snap["temps_c"])) if snap["temps_c"] else "none"
                 log_event("sampler", "tick #%d cpu=%.0f%% ram=%.0f%% temps=%s" % (n, c, r, t))
+            # Gzip rotation is cheap; do it once a minute.
+            now_mono = time.monotonic()
+            if now_mono - last_gzip_mono >= GZIP_EVERY_SECS:
+                last_gzip_mono = now_mono
+                _gzip_old_files()
             HIST.append_live(snap)
         except Exception as e:
             log_event("sampler", "ERROR: %r" % e)
+        # S12.2 heartbeat: append a one-line marker every 60 ticks so we
+        # can tell from disk whether sampler_loop is alive even when log_event
+        # and f.write are silently broken. Cheap, only every minute.
+        if n % 60 == 0 and n > 0:
+            try:
+                with open(os.path.join(HISTORY_DIR, "_sampler_heartbeat.log"), "a", encoding="utf-8") as hb:
+                    hb.write("%s n=%d\n" % (datetime.now(timezone.utc).isoformat(timespec="seconds"), n))
+            except Exception:
+                pass
         time.sleep(SAMPLE_SECS)
 
 
@@ -296,7 +405,11 @@ def sampler_loop(sampler):
 class HistoryIndex:
     """In-memory ring of compact points from the collector's JSONL snapshots."""
 
-    MAX_POINTS = 86400  # ~48h at the collector's ~2s cadence; ~30MB RAM
+    MAX_POINTS = 120000  # S12.2: at 1s cadence a full day is ~86,400 points; the
+                          # collector adds ~7-12k/day on top. 120k keeps ~24h of
+                          # live 1s samples + a few days of collector snapshots
+                          # in memory for chart history. Bucketize caps chart
+                          # points to MAX_POINTS_PER_RANGE regardless.
 
     def __init__(self):
         self.lock = threading.Lock()
@@ -336,17 +449,34 @@ class HistoryIndex:
             self.index_done.set()
 
     def _index_all_run(self):
+        pts = []
+        # S12.2: also index the dashboard's legacy single-file store
+        # (dashboard/data/samples.jsonl) so its 4 days of 30s points aren't
+        # lost on upgrade to the daily-rotation scheme. The new sampler_loop
+        # writes to HISTORY_DIR instead; this branch is a one-time migration
+        # path that simply stops contributing once samples.jsonl no longer
+        # grows. Collector JSONLs (the authoritative multi-day history) are
+        # still the primary source.
+        legacy = os.environ.get("SYSWATCH_DATA", os.path.join(BASE_DIR, "data"))
+        legacy_path = os.path.join(legacy, "samples.jsonl")
         try:
             names = sorted(n for n in os.listdir(COLLECTOR_LOGS) if n.endswith(".jsonl"))
         except OSError:
             log_event("history", "no collector logs dir: %s" % COLLECTOR_LOGS)
-            return
-        pts = []
+            names = []
         for name in names:
             path = os.path.join(COLLECTOR_LOGS, name)
             got, _ = self._read_new(path)
             pts.extend(got)
             log_event("history", "indexed %s: %d points" % (name, len(got)))
+        if os.path.exists(legacy_path):
+            try:
+                got, _ = self._read_new(legacy_path)
+                if got:
+                    pts.extend(got)
+                    log_event("history", "indexed legacy samples.jsonl: %d points" % len(got))
+            except Exception as e:
+                log_event("history", "legacy samples.jsonl read error: %s" % e)
         pts.sort(key=lambda p: p["ts"] or "")
         with self.lock:
             self.pts = pts[-self.MAX_POINTS:]
@@ -450,7 +580,20 @@ def _ts_epoch(ts):
 
 
 def bucketize(points, range_secs, now):
-    """Average raw points into ~MAX_POINTS_PER_RANGE buckets for smooth charts."""
+    """Average raw points into ~MAX_POINTS_PER_RANGE buckets for smooth charts.
+
+    S12.3 change: this now also returns the *raw* count of in-range points so
+    the caller can distinguish "empty in this range" (no data was ever
+    recorded in the requested window — show the no-data state) from "downsampled
+    to sparse buckets" (the range has data, but it falls into fewer than
+    MAX_POINTS_PER_RANGE buckets because most of the window is unfilled, e.g.
+    a 1y range with only 3 days of data).
+
+    Why this matters: a user clicking 1y on a fresh install should see the
+    "no data in this range yet" empty state, not an empty chart that implies
+    the chart is broken. But a 1y range with 3 days of history should show a
+    small cluster of points representing those 3 days, not the empty state.
+    """
     now_e = now.timestamp()
     cutoff_e = now_e - range_secs
     pts = []
@@ -459,7 +602,7 @@ def bucketize(points, range_secs, now):
         if e is not None and e >= cutoff_e:
             pts.append((e, p))
     if not pts:
-        return []
+        return ([], 0)
     n_buckets = min(MAX_POINTS_PER_RANGE, max(1, len(pts)))
     span = range_secs / n_buckets
     buckets = {}
@@ -494,7 +637,7 @@ def bucketize(points, range_secs, now):
         out.append({"ts": ts.isoformat(), "cpu": avg("cpu"), "ram": avg("ram"),
                     "down_bps": avg("down_bps"), "up_bps": avg("up_bps"),
                     "temps": temps})
-    return out
+    return (out, len(pts))
 
 
 # ------------------------------------------------------------------ HTTP layer
@@ -568,7 +711,18 @@ class Handler(BaseHTTPRequestHandler):
         now = datetime.now(timezone.utc)
         with HIST.lock:
             raw = list(HIST.pts)
-        pts = bucketize(raw, RANGES[rng], now)
+        # Count raw in-range points BEFORE bucketing so we can emit empty:true
+        # even when the chosen range has data that falls into fewer buckets
+        # than the chart can draw (e.g. 1y range with only 3 days of history
+        # produces 3 buckets — still real data, just sparse). We compare to
+        # the requested range window, not the bucket count.
+        cutoff = now.timestamp() - RANGES[rng]
+        raw_count = 0
+        for p in raw:
+            e = _ts_epoch(p.get("ts"))
+            if e is not None and e >= cutoff:
+                raw_count += 1
+        pts, _ = bucketize(raw, RANGES[rng], now)
         labels = [p["ts"] for p in pts]
         # Build per-sensor series from the bucketed points (each point has
         # a parallel `temps` array). Only sensors present in the LAST point
@@ -602,6 +756,11 @@ class Handler(BaseHTTPRequestHandler):
         # Pad labels if sensors.json had fewer
         while len(sensor_labels) < n_sensors:
             sensor_labels.append("Sensor " + str(len(sensor_labels) + 1))
+        # S12.3: when no raw points fell inside the requested window we still
+        # return the full response shape but flip `empty: true` so the UI can
+        # render the "No data in this range yet" state instead of an empty
+        # chart with axes. data_started_iso lets the UI say "data starts
+        # <time>" for context (e.g. "data starts Aug 26").
         out = {"range": rng, "labels": labels, "points": pts,
                "series": {"cpu": [p["cpu"] for p in pts],
                           "ram": [p["ram"] for p in pts],
@@ -609,7 +768,16 @@ class Handler(BaseHTTPRequestHandler):
                           "up_bps": [p["up_bps"] for p in pts]},
                "temp_series": temp_series,
                "sensor_labels": sensor_labels,
-               "history_sources": {"collector_points": len(raw)}}
+               "history_sources": {"collector_points": len(raw),
+                                   "in_range_points": raw_count,
+                                   "downsampled_to": len(pts)}}
+        if raw_count == 0:
+            out["empty"] = True
+            # Earliest data we DO have, so the UI can say "data starts …"
+            if raw:
+                first_iso = raw[0].get("ts")
+                if first_iso:
+                    out["data_started_iso"] = first_iso
         self._json(out)
 
     def api_logs(self, qs):
@@ -668,4 +836,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

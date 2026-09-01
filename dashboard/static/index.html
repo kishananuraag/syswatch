@@ -10,9 +10,25 @@
 <header>
   <h1>syswatch</h1>
   <div id="cpuBig">&ndash;<span class="unit">%</span></div>
-  <div class="chips" id="rangeChips"></div>
   <div id="clock"><span class="mono" id="clockTime"></span><br><span id="status">connecting&hellip;</span></div>
 </header>
+
+<!--
+  Reusable inline SVG used as the "no data" icon in every empty state.
+  Kept here in one spot so all chart-empty cards render the same metaphor.
+-->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="icon-no-data" viewBox="0 0 64 64">
+      <rect x="8"  y="20" width="6" height="28" rx="1" fill="none" stroke="currentColor" stroke-width="2"/>
+      <rect x="18" y="12" width="6" height="44" rx="1" fill="none" stroke="currentColor" stroke-width="2"/>
+      <rect x="28" y="22" width="6" height="26" rx="1" fill="none" stroke="currentColor" stroke-width="2"/>
+      <rect x="38" y="8"  width="6" height="52" rx="1" fill="none" stroke="currentColor" stroke-width="2"/>
+      <rect x="48" y="18" width="6" height="32" rx="1" fill="none" stroke="currentColor" stroke-width="2"/>
+      <line x1="6" y1="6" x2="58" y2="58" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+    </symbol>
+  </defs>
+</svg>
 
 <div class="grid">
 
@@ -21,10 +37,27 @@
     <h2>CPU total
       <span style="text-transform:none;letter-spacing:0;font-weight:400"
             id="cpuMeta"></span></h2>
-    <div class="chart-wrap"><canvas id="cpuChart" class="chart"></canvas></div>
+    <div class="range-chips" data-range-target="cpu" role="tablist" aria-label="CPU time range">
+      <button class="chip" data-range="1m" type="button" role="tab">1m</button>
+      <button class="chip" data-range="5m" type="button" role="tab">5m</button>
+      <button class="chip" data-range="15m" type="button" role="tab">15m</button>
+      <button class="chip" data-range="1h" type="button" role="tab">1h</button>
+      <button class="chip" data-range="6h" type="button" role="tab">6h</button>
+      <button class="chip" data-range="1d" type="button" role="tab">1d</button>
+      <button class="chip" data-range="7d" type="button" role="tab">7d</button>
+      <button class="chip" data-range="30d" type="button" role="tab">30d</button>
+      <button class="chip" data-range="1y" type="button" role="tab">1y</button>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="cpuChart" class="chart"></canvas>
+      <div class="empty-state" data-empty="cpu" hidden>
+        <svg class="empty-icon" aria-hidden="true"><use href="#icon-no-data"/></svg>
+        <p class="empty-text">No data in this range yet</p>
+      </div>
+    </div>
   </div>
 
-  <!-- CPU PER CORE -->
+  <!-- CPU PER CORE (no range chart; just live gauges) -->
   <div class="card c5">
     <h2>CPU per core <span id="coreCount" style="text-transform:none;letter-spacing:0;font-weight:400"></span></h2>
     <div id="cores"></div>
@@ -36,7 +69,24 @@
     <div class="big" id="ramBig">&ndash;</div>
     <div class="subval" id="ramSub"></div>
     <div class="gauge"><div class="fill" id="ramFill"></div></div>
-    <div class="chart-wrap" style="height:110px"><canvas id="ramChart" class="chart"></canvas></div>
+    <div class="range-chips" data-range-target="ram" role="tablist" aria-label="RAM time range">
+      <button class="chip" data-range="1m" type="button" role="tab">1m</button>
+      <button class="chip" data-range="5m" type="button" role="tab">5m</button>
+      <button class="chip" data-range="15m" type="button" role="tab">15m</button>
+      <button class="chip" data-range="1h" type="button" role="tab">1h</button>
+      <button class="chip" data-range="6h" type="button" role="tab">6h</button>
+      <button class="chip" data-range="1d" type="button" role="tab">1d</button>
+      <button class="chip" data-range="7d" type="button" role="tab">7d</button>
+      <button class="chip" data-range="30d" type="button" role="tab">30d</button>
+      <button class="chip" data-range="1y" type="button" role="tab">1y</button>
+    </div>
+    <div class="chart-wrap" style="height:110px">
+      <canvas id="ramChart" class="chart"></canvas>
+      <div class="empty-state" data-empty="ram" hidden>
+        <svg class="empty-icon" aria-hidden="true"><use href="#icon-no-data"/></svg>
+        <p class="empty-text">No data in this range yet</p>
+      </div>
+    </div>
     <div class="subval" id="swapSub"></div>
   </div>
 
@@ -45,7 +95,24 @@
     <h2>Network</h2>
     <div class="big mono" id="netBig">&ndash;</div>
     <div class="subval" id="netSub"></div>
-    <div class="chart-wrap" style="height:110px"><canvas id="netChart" class="chart"></canvas></div>
+    <div class="range-chips" data-range-target="net" role="tablist" aria-label="Network time range">
+      <button class="chip" data-range="1m" type="button" role="tab">1m</button>
+      <button class="chip" data-range="5m" type="button" role="tab">5m</button>
+      <button class="chip" data-range="15m" type="button" role="tab">15m</button>
+      <button class="chip" data-range="1h" type="button" role="tab">1h</button>
+      <button class="chip" data-range="6h" type="button" role="tab">6h</button>
+      <button class="chip" data-range="1d" type="button" role="tab">1d</button>
+      <button class="chip" data-range="7d" type="button" role="tab">7d</button>
+      <button class="chip" data-range="30d" type="button" role="tab">30d</button>
+      <button class="chip" data-range="1y" type="button" role="tab">1y</button>
+    </div>
+    <div class="chart-wrap" style="height:110px">
+      <canvas id="netChart" class="chart"></canvas>
+      <div class="empty-state" data-empty="net" hidden>
+        <svg class="empty-icon" aria-hidden="true"><use href="#icon-no-data"/></svg>
+        <p class="empty-text">No data in this range yet</p>
+      </div>
+    </div>
   </div>
 
   <!-- ALERTS -->
@@ -58,6 +125,17 @@
   <div class="card c12">
     <h2>Temperatures
       <span style="text-transform:none;letter-spacing:0;font-weight:400" id="tempNote"></span></h2>
+    <div class="range-chips" data-range-target="temps" role="tablist" aria-label="Temperatures time range">
+      <button class="chip" data-range="1m" type="button" role="tab">1m</button>
+      <button class="chip" data-range="5m" type="button" role="tab">5m</button>
+      <button class="chip" data-range="15m" type="button" role="tab">15m</button>
+      <button class="chip" data-range="1h" type="button" role="tab">1h</button>
+      <button class="chip" data-range="6h" type="button" role="tab">6h</button>
+      <button class="chip" data-range="1d" type="button" role="tab">1d</button>
+      <button class="chip" data-range="7d" type="button" role="tab">7d</button>
+      <button class="chip" data-range="30d" type="button" role="tab">30d</button>
+      <button class="chip" data-range="1y" type="button" role="tab">1y</button>
+    </div>
     <div id="tempArea"><span class="na">probing sensors&hellip;</span></div>
   </div>
 
