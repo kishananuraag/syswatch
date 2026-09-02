@@ -7,7 +7,7 @@ Rust system resource watcher. Tray app + JSON API server. Runs on Windows.
 
 ## Current state (2026-09-03)
 - Branch: master
-- Last commit: `63505d3` B11: PID-lock singleton guard + 5MB history read cap + design concepts (centered/grouped/bento)
+- Last commit: `8f65002` BRAIN.md push: gitignore + BRAIN per project; PID 134652 tray running; 2 stray .pyc noted.
 - Uncommitted: 2 files
 - Binary: `target/release/syswatch-tray.exe` (built, was running PID 134652 as of 9/3)
 - Dashboard: web UI on localhost:port (see README.md)
