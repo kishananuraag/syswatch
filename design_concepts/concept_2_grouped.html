@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>syswatch — Concept 2: Grouped Sections</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root{
+    --bg:#0E1116; --panel:#151A21; --panel2:#10151C; --border:#232B36;
+    --fg:#E8EDF4; --dim:#7C8896; --accent:#58A6FF;
+    --red:#E10600; --green:#2EA043; --yellow:#D29922; --purple:#BC8CFF;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--fg);
+    font:14px/1.45 "Segoe UI",-apple-system,sans-serif;}
+  body{padding:20px 24px 40px}
+  .mono{font-family:Consolas,Menlo,monospace}
+
+  header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:18px;
+    max-width:1080px;margin-left:auto;margin-right:auto}
+  h1{font-size:18px;font-weight:600;letter-spacing:.02em}
+  #cpuBig{font-size:40px;font-weight:700;line-height:1;
+    font-variant-numeric:tabular-nums;min-width:120px}
+  #cpuBig .unit{font-size:16px;color:var(--dim);font-weight:400}
+  .chips{display:inline-flex;gap:5px;flex-wrap:wrap}
+  .chips button{background:transparent;border:1px solid var(--border);color:var(--dim);
+    border-radius:999px;font-size:11px;padding:3px 11px;cursor:pointer}
+  .chips button.active{background:var(--red);border-color:var(--red);color:#fff;font-weight:600}
+  #clock{margin-left:auto;text-align:right;font-size:11px;color:var(--dim)}
+
+  /* Wider than concept 1 — 1080px. Sections are clearly named. */
+  .stage{max-width:1080px;margin:0 auto;}
+
+  /* SECTION HEADER — like Notion or iStat */
+  .section{margin:18px 0 8px;display:flex;align-items:center;gap:8px;
+    color:var(--dim);font-size:11px;font-weight:600;letter-spacing:.1em;
+    text-transform:uppercase}
+  .section::after{content:"";flex:1;height:1px;background:var(--border)}
+  .section .badge{margin-left:auto;font-weight:400;text-transform:none;letter-spacing:0;
+    color:var(--fg);font-size:11px}
+
+  /* SECTION GRID — 2 cols for normal sections, 1 col for hero (CPU total) */
+  .grid2{display:grid;gap:12px;grid-template-columns:repeat(2,1fr)}
+  .grid3{display:grid;gap:12px;grid-template-columns:repeat(3,1fr)}
+  .hero{grid-column:1 / -1;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:720px){
+    .grid2,.grid3,.hero{grid-template-columns:1fr}
+  }
+
+  .card{background:var(--panel);border:1px solid var(--border);
+    border-radius:10px;padding:14px 16px}
+  .card h2{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--dim);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
+  .card .big{font-size:26px;font-weight:650;line-height:1.2;font-variant-numeric:tabular-nums}
+  .card .big .unit{font-size:12px;color:var(--dim);font-weight:400}
+  .card .sub{color:var(--dim);font-size:12px;margin-top:3px}
+  canvas,svg{display:block;width:100%}
+
+  .gauge{height:10px;background:var(--panel2);border-radius:5px;overflow:hidden;margin:8px 0 6px}
+  .gauge .fill{height:100%;background:linear-gradient(90deg,#238636,var(--green))}
+
+  /* process table */
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th,td{text-align:left;padding:4px 6px;border-bottom:1px solid var(--border)}
+  th{color:var(--dim);font-weight:500;font-size:10px;text-transform:uppercase;letter-spacing:.04em}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  tr:last-child td{border-bottom:none}
+
+  .core{display:grid;grid-template-columns:18px 1fr 40px;gap:7px;align-items:center;
+    margin:3px 0;font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums}
+  .core .bar{height:6px;background:var(--panel2);border-radius:3px;overflow:hidden}
+  .core .bar .f{height:100%;background:linear-gradient(90deg,var(--accent),#79C0FF)}
+  .core .val{text-align:right;color:var(--fg)}
+
+  .alert{display:flex;align-items:center;gap:8px;padding:4px 0;
+    border-bottom:1px solid var(--border);font-size:12px}
+  .alert:last-child{border-bottom:none}
+  .dot{width:7px;height:7px;border-radius:50%;flex:none}
+  .dot.ok{background:var(--green)}.dot.fired{background:var(--red);box-shadow:0 0 6px var(--red)}
+  .alert .time{margin-left:auto;color:var(--dim);font-size:10.5px}
+
+  .tag{font-size:9.5px;padding:2px 6px;border-radius:4px;background:var(--panel2);
+    color:var(--dim);text-transform:uppercase;letter-spacing:.04em}
+
+  .actions{margin:24px auto 0;display:flex;gap:8px;justify-content:flex-end;max-width:1080px}
+  .actions button{background:var(--panel);border:1px solid var(--border);color:var(--fg);
+    border-radius:999px;padding:6px 14px;font-size:12px;cursor:pointer}
+  .actions .primary{background:var(--red);border-color:var(--red);color:#fff;font-weight:600}
+</style>
+</head>
+<body>
+<header>
+  <h1>syswatch</h1>
+  <div id="cpuBig">42<span class="unit">%</span></div>
+  <div class="chips">
+    <button>1m</button><button>5m</button><button class="active">1h</button>
+    <button>6h</button><button>1d</button><button>7d</button><button>30d</button>
+    <button>6mo</button><button>1y</button>
+  </div>
+  <div id="clock"><span class="mono">21:08:24</span><br>live</div>
+</header>
+
+<div class="stage">
+
+  <!-- SECTION: CPU -->
+  <div class="section">CPU <span class="badge">8 cores · 3.42 GHz</span></div>
+  <div class="hero">
+    <div class="card">
+      <h2>CPU total <span class="tag">0–100%</span></h2>
+      <div class="big">42<span class="unit">%</span></div>
+      <div class="sub">avg 38% · peak 94% at 21:02</div>
+      <div style="height:120px;margin-top:8px">
+        <svg viewBox="0 0 500 120" preserveAspectRatio="none" style="width:100%;height:100%">
+          <defs><linearGradient id="g" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stop-color="#58A6FF" stop-opacity=".5"/>
+            <stop offset="100%" stop-color="#58A6FF" stop-opacity="0"/></linearGradient></defs>
+          <path d="M0,80 L25,75 L50,60 L75,70 L100,50 L125,45 L150,30 L175,40 L200,25 L225,20 L250,30 L275,15 L300,25 L325,10 L350,20 L375,15 L400,25 L425,18 L450,15 L475,20 L500,12 L500,120 L0,120 Z" fill="url(#g)"/>
+          <path d="M0,80 L25,75 L50,60 L75,70 L100,50 L125,45 L150,30 L175,40 L200,25 L225,20 L250,30 L275,15 L300,25 L325,10 L350,20 L375,15 L400,25 L425,18 L450,15 L475,20 L500,12" stroke="#58A6FF" stroke-width="1.5" fill="none"/>
+        </svg>
+      </div>
+    </div>
+    <div class="card">
+      <h2>CPU per core <span class="tag">live</span></h2>
+      <div class="core"><span>1</span><div class="bar"><div class="f" style="width:78%"></div></div><span class="val">78%</span></div>
+      <div class="core"><span>2</span><div class="bar"><div class="f" style="width:45%"></div></div><span class="val">45%</span></div>
+      <div class="core"><span>3</span><div class="bar"><div class="f" style="width:62%"></div></div><span class="val">62%</span></div>
+      <div class="core"><span>4</span><div class="bar"><div class="f" style="width:31%"></div></div><span class="val">31%</span></div>
+      <div class="core"><span>5</span><div class="bar"><div class="f" style="width:18%"></div></div><span class="val">18%</span></div>
+      <div class="core"><span>6</span><div class="bar"><div class="f" style="width:25%"></div></div><span class="val">25%</span></div>
+      <div class="core"><span>7</span><div class="bar"><div class="f" style="width:55%"></div></div><span class="val">55%</span></div>
+      <div class="core"><span>8</span><div class="bar"><div class="f" style="width:11%"></div></div><span class="val">11%</span></div>
+    </div>
+  </div>
+
+  <!-- SECTION: MEMORY -->
+  <div class="section">Memory <span class="badge">9.8 / 16 GB · swap 1.2 GB</span></div>
+  <div class="grid2">
+    <div class="card">
+      <h2>RAM <span class="tag">used</span></h2>
+      <div class="big">9.8 <span class="unit">GB</span></div>
+      <div class="sub">61% · 6.2 GB free</div>
+      <div class="gauge"><div class="fill" style="width:61%"></div></div>
+      <div style="height:80px;margin-top:8px">
+        <svg viewBox="0 0 400 80" preserveAspectRatio="none" style="width:100%;height:100%">
+          <path d="M0,50 L20,48 L40,52 L60,45 L80,42 L100,40 L120,38 L140,35 L160,32 L180,30 L200,28 L220,30 L240,25 L260,28 L280,22 L300,24 L320,20 L340,22 L360,18 L380,20 L400,16" stroke="#2EA043" stroke-width="1.2" fill="none"/>
+        </svg>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Top apps by RAM <span class="tag">↓ DESC</span></h2>
+      <table><thead><tr><th>Name</th><th class="num">RAM</th><th class="num">CPU%</th></tr></thead>
+        <tbody>
+          <tr><td>chrome.exe</td><td class="num">842 MB</td><td class="num">18.4%</td></tr>
+          <tr><td>Photoshop.exe</td><td class="num">1.1 GB</td><td class="num">0.4%</td></tr>
+          <tr><td>Code.exe</td><td class="num">512 MB</td><td class="num">12.1%</td></tr>
+          <tr><td>Discord.exe</td><td class="num">388 MB</td><td class="num">4.2%</td></tr>
+          <tr><td>python.exe</td><td class="num">214 MB</td><td class="num">8.3%</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SECTION: STORAGE -->
+  <div class="section">Storage <span class="badge">C: 84% · D: 12%</span></div>
+  <div class="grid2">
+    <div class="card">
+      <h2>Disk I/O <span class="tag">C: D:</span></h2>
+      <div class="big mono">42 <span class="unit">MB/s R</span></div>
+      <div class="sub">8 MB/s W · 1.2k IOPS</div>
+      <div style="height:80px;margin-top:8px">
+        <svg viewBox="0 0 400 80" preserveAspectRatio="none" style="width:100%;height:100%">
+          <path d="M0,30 L20,25 L40,32 L60,18 L80,28 L100,15 L120,22 L140,12 L160,18 L180,8 L200,15 L220,5 L240,12 L260,8 L280,15 L300,10 L320,14 L340,8 L360,12 L380,6 L400,10" stroke="#BC8CFF" stroke-width="1.5" fill="none"/>
+        </svg>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Disk usage <span class="tag">mounts</span></h2>
+      <div class="core"><span>C:</span><div class="bar"><div class="f" style="width:84%;background:linear-gradient(90deg,#D29922,var(--red))"></div></div><span class="val">420/500 GB</span></div>
+      <div class="core"><span>D:</span><div class="bar"><div class="f" style="width:12%"></div></div><span class="val">120/1000 GB</span></div>
+      <div class="core"><span>E:</span><div class="bar"><div class="f" style="width:48%"></div></div><span class="val">240/500 GB</span></div>
+      <div class="sub" style="margin-top:8px">largest folder: <span class="mono">/Users/kisha/.cargo</span> 84 GB</div>
+    </div>
+  </div>
+
+  <!-- SECTION: NETWORK -->
+  <div class="section">Network <span class="badge">Wi-Fi · 2.4M pkts/min</span></div>
+  <div class="grid2">
+    <div class="card">
+      <h2>Throughput <span class="tag">Wi-Fi</span></h2>
+      <div class="big mono">12.4 <span class="unit">MB/s ↓</span></div>
+      <div class="sub">↑ 0.8 MB/s</div>
+      <div style="height:80px;margin-top:8px">
+        <svg viewBox="0 0 400 80" preserveAspectRatio="none" style="width:100%;height:100%">
+          <path d="M0,40 L20,55 L40,30 L60,25 L80,45 L100,20 L120,35 L140,15 L160,30 L180,50 L200,10 L220,28 L240,40 L260,18 L280,32 L300,12 L320,22 L340,15 L360,28 L380,12 L400,18" stroke="#E10600" stroke-width="1.5" fill="none"/>
+        </svg>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Top apps by network <span class="tag">↓ DESC</span></h2>
+      <table><thead><tr><th>Name</th><th class="num">Rx</th><th class="num">Tx</th></tr></thead>
+        <tbody>
+          <tr><td>chrome.exe</td><td class="num">8.2 MB/s</td><td class="num">0.4 MB/s</td></tr>
+          <tr><td>Steam.exe</td><td class="num">3.1 MB/s</td><td class="num">0.2 MB/s</td></tr>
+          <tr><td>Discord.exe</td><td class="num">0.6 MB/s</td><td class="num">0.1 MB/s</td></tr>
+          <tr><td>spotify.exe</td><td class="num">0.4 MB/s</td><td class="num">0 MB/s</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SECTION: POWER -->
+  <div class="section">Power <span class="badge">discharging · 12W</span></div>
+  <div class="grid2">
+    <div class="card">
+      <h2>Battery <span class="tag">78%</span></h2>
+      <div class="big">78<span class="unit">%</span></div>
+      <div class="sub">2h 14m left · 12W draw</div>
+      <div class="gauge"><div class="fill" style="width:78%"></div></div>
+      <div class="core" style="margin-top:6px"><span>up</span><div class="bar"><div class="f" style="width:100%"></div></div><span class="val">3h 41m</span></div>
+    </div>
+    <div class="card">
+      <h2>Top apps by watts <span class="tag">↓ DESC</span></h2>
+      <table><thead><tr><th>Name</th><th class="num">W</th><th class="num">CPU%</th><th class="num">GPU%</th></tr></thead>
+        <tbody>
+          <tr><td>Photoshop.exe</td><td class="num">4.2 W</td><td class="num">0.4%</td><td class="num">12%</td></tr>
+          <tr><td>chrome.exe</td><td class="num">2.1 W</td><td class="num">18%</td><td class="num">0%</td></tr>
+          <tr><td>Code.exe</td><td class="num">1.4 W</td><td class="num">12%</td><td class="num">0%</td></tr>
+          <tr><td>Discord.exe</td><td class="num">0.3 W</td><td class="num">4%</td><td class="num">0%</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SECTION: THERMALS -->
+  <div class="section">Thermals <span class="badge">6 sensors</span></div>
+  <div class="grid3">
+    <div class="card">
+      <h2>CPU</h2>
+      <div class="big">68<span class="unit">°C</span></div>
+      <div class="gauge"><div class="fill" style="width:62%;background:linear-gradient(90deg,#D29922,var(--red))"></div></div>
+      <div class="sub">Tdie 71°C · Tj 95°C max</div>
+    </div>
+    <div class="card">
+      <h2>GPU</h2>
+      <div class="big">72<span class="unit">°C</span></div>
+      <div class="gauge"><div class="fill" style="width:70%;background:linear-gradient(90deg,#D29922,var(--red))"></div></div>
+      <div class="sub">fan 68% · 1820 RPM</div>
+    </div>
+    <div class="card">
+      <h2>NVMe SSD</h2>
+      <div class="big">44<span class="unit">°C</span></div>
+      <div class="gauge"><div class="fill" style="width:35%"></div></div>
+      <div class="sub">S.M.A.R.T. ok · 4120 hrs</div>
+    </div>
+  </div>
+
+  <!-- SECTION: ALERTS -->
+  <div class="section">Alerts <span class="badge">3 active · 12 rules</span></div>
+  <div class="grid2">
+    <div class="card">
+      <h2>Active <span class="tag">3</span></h2>
+      <div class="alert"><span class="dot fired"></span><span>CPU &gt; 90% for 2m</span><span class="time">21:06</span></div>
+      <div class="alert"><span class="dot fired"></span><span>RAM &gt; 85%</span><span class="time">21:01</span></div>
+      <div class="alert"><span class="dot fired"></span><span>Disk C: &gt; 90%</span><span class="time">20:42</span></div>
+    </div>
+    <div class="card">
+      <h2>Recently resolved <span class="tag">last 24h</span></h2>
+      <div class="alert"><span class="dot ok"></span><span>CPU &lt; 50% sustained</span><span class="time">19:50</span></div>
+      <div class="alert"><span class="dot ok"></span><span>GPU &lt; 80°C</span><span class="time">18:14</span></div>
+      <div class="alert"><span class="dot ok"></span><span>Network &lt; 5 MB/s</span><span class="time">17:02</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="actions">
+  <button>✎ Edit layout</button>
+  <button>↻ Reset</button>
+  <button class="primary">⤢ Open analytics</button>
+</div>
+</body>
+</html>

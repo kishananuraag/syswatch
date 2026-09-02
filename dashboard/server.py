@@ -33,6 +33,7 @@ import gzip
 import json
 import os
 import shutil
+import sys
 import threading
 import time
 from datetime import datetime, timedelta, timezone
@@ -330,6 +331,31 @@ def _gzip_old_files():
             log_event("history", "gzip failed %s: %s" % (name, e))
 
 
+def _singleton_acquire():
+    """B11: PID-lock guard. If dashboard/.sampler.pid exists and that PID is
+    still alive on this machine, exit immediately. Otherwise claim the slot
+    with our PID. Cheap, atomic enough on Windows for our purposes — at worst
+    a stale entry from a crashed process is harmless (we overwrite)."""
+    lock = os.path.join(BASE_DIR, ".sampler.pid")
+    my_pid = os.getpid()
+    try:
+        if os.path.exists(lock):
+            try:
+                with open(lock, "r") as f:
+                    other = int(f.read().strip() or "0")
+            except (OSError, ValueError):
+                other = 0
+            if other and other != my_pid:
+                # psutil is imported above; if it's missing (tests) treat as alive.
+                if psutil is None or psutil.pid_exists(other):
+                    log_event("sampler", "another instance pid=%d alive; exiting" % other)
+                    sys.exit(0)
+        with open(lock, "w") as f:
+            f.write(str(my_pid))
+    except OSError:
+        pass  # never block startup on lock I/O errors
+
+
 def sampler_loop(sampler):
     """S12.2: 1s tick (down from 5s). Sample psutil, append a compact JSONL line
     to the daily file, log events, feed alerter, gzip files older than 7 days.
@@ -338,6 +364,7 @@ def sampler_loop(sampler):
     once and held across ticks to avoid fsync per line. Appends are atomic
     enough for our purposes (the OS may reorder within a single fd, but we
     only ever read whole files via tail_newest())."""
+    _singleton_acquire()  # B11: refuse to start if another instance is alive
     n = 0
     last_gzip_mono = 0.0
     GZIP_EVERY_SECS = 60.0
@@ -508,7 +535,16 @@ class HistoryIndex:
                 return [], 0
         try:
             with open(path, "rb") as f:
-                f.seek(off)
+                # B11: bound reads. Collector JSONLs grow to 75-120MB;
+                # reading the whole tail every 15s leaked RSS. Cap to the
+                # last 5 MB — ~10 minutes of new collector data at typical
+                # 5s/sample cadence. Advance offset to read_from + bytes
+                # actually read (clamped to size) so we don't re-emit the
+                # same lines.
+                read_from = off
+                if size - read_from > 5_000_000:
+                    read_from = size - 5_000_000
+                f.seek(read_from)
                 raw = f.read()
         except OSError as e:
             log_event("history", "read error %s: %s" % (name, e))
@@ -534,7 +570,9 @@ class HistoryIndex:
             if p and p["ts"]:
                 got.append(p)
         with self.lock:
-            self.offsets[name] = off + len(raw)
+            # B11: advance offset to end of what we consumed (not "off + len"
+            # which would re-read on next tick when we capped read_from).
+            self.offsets[name] = min(size, read_from + len(raw))
         return got, len(lines)
 
     def tail_newest(self):
