@@ -5,3 +5,8 @@
 *.jsonl
 *.log
 logs/
+
+# CGR (code-graph-rag) indexer caches - auto-regenerated, do not commit
+.cgr-dir-mtimes.json
+.cgr-hash-cache.json
+.cgr-parser-fingerprint
