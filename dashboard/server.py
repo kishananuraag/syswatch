@@ -13,6 +13,11 @@ Endpoints:
                         "no data in this range yet" state.
   /api/logs             last N events: live sampler ticks + collector service events
                         + alert fires + server lifecycle, newest first
+  /api/agent-events     T4b: JSON array of the last N lines of
+                        .hermes/run/events.jsonl (tail read; missing -> [])
+  /api/agent-stream     T4b: SSE (text/event-stream) tail of the same log:
+                        {"kind":"hello"} on connect, then one data: <line>
+                        per line appended (survives delete/rotate)
 
 Data sources: psutil for LIVE values; the Rust collector's JSONL snapshots in
 SYSWATCH_LOGS (default C:\\ProgramData\\syswatch\\logs) are indexed once in a
@@ -32,6 +37,7 @@ Stdlib only except psutil.
 import gzip
 import json
 import os
+import select
 import shutil
 import signal
 import socket
@@ -693,6 +699,62 @@ def bucketize(points, range_secs, now):
     return (out, len(pts))
 
 
+# ------------------------------------------- T4b: agent event stream (.hermes)
+# tools/driver.py appends one JSON object per line to .hermes/run/events.jsonl
+# (schema: briefs/D1.md — {"ts","job","kind","model","attempt","exit",
+# "duration_s","text"}). Two read-only endpoints expose it to the cockpit:
+# a bounded tail read (/api/agent-events) and an SSE tail (/api/agent-stream).
+# The file may not exist yet (briefs/T4.md context) — both endpoints treat
+# "missing" as empty, never as an error. Path resolves from THIS FILE (repo
+# root), not the process cwd, so launching from anywhere finds the same log.
+AGENT_EVENTS_PATH = os.environ.get(
+    "SYSWATCH_AGENT_EVENTS",
+    os.path.join(os.path.dirname(BASE_DIR), ".hermes", "run", "events.jsonl"))
+AGENT_EVENTS_MAX_LIMIT = 500   # same cap as the /api/logs ring
+AGENT_TAIL_BYTES = 2_000_000   # tail window; a 100MB log is never fully loaded
+AGENT_STREAM_POLL_S = 0.5      # SSE poll cadence (new lines appear in <=0.5s)
+
+
+def agent_events_tail(limit):
+    """Last `limit` lines of the agent event log, oldest-first. [] on any failure.
+
+    T4b: seek from EOF and read at most AGENT_TAIL_BYTES — never the whole
+    file. Missing (not created yet), unreadable, or empty -> [] and never an
+    error, per the brief."""
+    start = 0
+    try:
+        with open(AGENT_EVENTS_PATH, "rb") as f:
+            f.seek(0, os.SEEK_END)
+            size = f.tell()
+            if size == 0:
+                return []
+            start = max(0, size - AGENT_TAIL_BYTES)
+            f.seek(start)
+            raw = f.read()
+    except OSError:
+        return []
+    lines = raw.decode("utf-8", errors="replace").splitlines()
+    if start > 0 and lines:
+        lines.pop(0)  # mid-file seek: first line is likely a partial line
+    lines = [ln for ln in lines if ln.strip()]
+    return lines[-limit:]
+
+
+def _sse_peer_closed(conn):
+    """True once the SSE client has hung up (FIN received, or socket error).
+
+    select + MSG_PEEK peeks without consuming bytes and without writing
+    anything, so an idle stream notices a disconnected client on the next
+    poll instead of leaking the handler thread until server shutdown."""
+    try:
+        readable, _, _ = select.select([conn], [], [], 0)
+        if not readable:
+            return False
+        return conn.recv(1, socket.MSG_PEEK) == b""
+    except (OSError, ValueError):
+        return True  # socket already gone -> treat as closed
+
+
 # ------------------------------------------------------------------ HTTP layer
 HIST = HistoryIndex()
 SAMPLER = Sampler() if psutil else None
@@ -731,6 +793,10 @@ class Handler(BaseHTTPRequestHandler):
                 return self.api_logs(parse_qs(url.query))
             if route == "/api/alerts":
                 return self._json(alerts.state())
+            if route == "/api/agent-events":
+                return self.api_agent_events(parse_qs(url.query))
+            if route == "/api/agent-stream":
+                return self.api_agent_stream()
         except Exception as e:
             log_event("http", "%s failed: %r" % (route, e))
             import traceback
@@ -864,6 +930,97 @@ class Handler(BaseHTTPRequestHandler):
             if len(out) >= limit:
                 break
         self._json({"events": out, "count": len(EVENTS)})
+
+    # -- T4b: agent event stream -------------------------------------------
+    def api_agent_events(self, qs):
+        """T4b #1: JSON array of the last N lines of .hermes/run/events.jsonl.
+
+        Tail read (agent_events_tail), never the whole file. Missing file
+        -> []. Each element is the line's JSON object; a malformed line is
+        passed through as its raw string rather than dropped or failed."""
+        try:
+            limit = int((qs.get("limit") or ["50"])[0])
+        except ValueError:
+            limit = 50
+        limit = max(1, min(limit, AGENT_EVENTS_MAX_LIMIT))
+        out = []
+        for line in agent_events_tail(limit):
+            try:
+                out.append(json.loads(line))
+            except ValueError:
+                out.append(line)
+        self._json(out)
+
+    def api_agent_stream(self):
+        """T4b #2: SSE tail of .hermes/run/events.jsonl.
+
+        Runs on its own thread (ThreadingHTTPServer) with its own file
+        offset, so a slow or hung cockpit tab blocks neither other requests
+        nor other tabs. Header/loop errors are logged here and swallowed:
+        once the SSE headers are out, a 500 body would corrupt the stream."""
+        # No second request will be parsed on this connection: the response
+        # is close-delimited (no Content-Length) by design.
+        self.close_connection = True
+        try:
+            self._agent_stream_run()
+        except Exception as e:  # noqa: BLE001 - never let a stream error 500
+            log_event("agent-stream", "ended: %r" % e)
+
+    def _agent_stream_run(self):
+        try:
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+            self.send_header("Cache-Control", "no-cache")
+            self.send_header("Connection", "close")
+            self.end_headers()
+            self.wfile.write(b'data: {"kind":"hello"}\n\n')
+            self.wfile.flush()
+        except OSError:
+            return  # client hung up during the handshake
+
+        # Per-connection tail state.
+        pos = None    # read offset; None = not positioned yet
+        ino = None    # inode at last sighting (rotation detector)
+        gone = False  # stat failed since last sighting (delete detector)
+        partial = b""  # trailing line without its newline yet
+        while not _sse_peer_closed(self.connection):
+            try:
+                st = os.stat(AGENT_EVENTS_PATH)
+            except OSError:
+                gone = True  # missing: not created yet / deleted / mid-rotate
+                time.sleep(AGENT_STREAM_POLL_S)
+                continue
+            try:
+                if gone or (ino is not None and st.st_ino and st.st_ino != ino):
+                    pos, partial = 0, b""  # recreated or rotated -> read from top
+                gone = False
+                if pos is None:
+                    pos = st.st_size  # first sighting: EOF, only NEW lines
+                elif st.st_size < pos:
+                    pos, partial = 0, b""  # truncated -> re-read from top
+                ino = st.st_ino or ino
+                if st.st_size > pos:
+                    with open(AGENT_EVENTS_PATH, "rb") as f:
+                        f.seek(pos)
+                        chunk = f.read()
+                    pos += len(chunk)
+                    data = partial + chunk
+                    lines = data.split(b"\n")
+                    partial = b""
+                    if not data.endswith(b"\n"):
+                        partial = lines.pop()  # wait for the newline
+                    for ln in lines:
+                        text = ln.decode("utf-8", errors="replace").rstrip("\r")
+                        if not text.strip():
+                            continue
+                        self.wfile.write(("data: %s\n\n" % text).encode("utf-8"))
+                    self.wfile.flush()
+            except (BrokenPipeError, ConnectionAbortedError, ConnectionResetError):
+                return  # client hung up mid-stream
+            except OSError as e:
+                log_event("agent-stream", "read error: %r" % e)
+                return
+            time.sleep(AGENT_STREAM_POLL_S)
 
     def log_message(self, fmt, *args):
         pass
