@@ -33,12 +33,16 @@ import gzip
 import json
 import os
 import shutil
+import signal
+import socket
 import sys
 import threading
 import time
 from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import socketserver
 from urllib.parse import urlparse, parse_qs
+from urllib.request import urlopen
 
 import alerts
 
@@ -67,6 +71,10 @@ RANGES = {"1m": 60, "5m": 300, "15m": 900, "1h": 3600, "6h": 21600,
 MAX_POINTS_PER_RANGE = 500
 
 BOOT_TS = datetime.now(timezone.utc).isoformat(timespec="seconds")
+# T4a: monotonic start stamp backing /api/health uptime_s. Monotonic (not
+# wall clock) so NTP jumps or manual clock changes can't report a negative
+# or wildly wrong uptime.
+START_MONO = time.monotonic()
 
 
 # ---------------------------------------------------------------- temperatures
@@ -713,6 +721,8 @@ class Handler(BaseHTTPRequestHandler):
         if route.startswith("/static/"):
             return self._serve_file(route[len("/static/"):], None)
         try:
+            if route == "/api/health":
+                return self.api_health()
             if route == "/api/current":
                 return self.api_current()
             if route == "/api/history":
@@ -747,6 +757,15 @@ class Handler(BaseHTTPRequestHandler):
         if not snap:
             return self._json({"error": "first sample in progress"}, 503)
         self._json(snap)
+
+    def api_health(self):
+        """T4a: liveness probe. Used by the single-instance check on startup
+        and by anything that wants to know the server is up, its pid, and how
+        long it has been running. Deliberately independent of the sampler —
+        health must answer even while the first sample is still in progress."""
+        self._json({"ok": True, "pid": os.getpid(),
+                    "uptime_s": round(time.monotonic() - START_MONO, 3),
+                    "port": PORT})
 
     def api_history(self, qs):
         rng = (qs.get("range") or ["1h"])[0]
@@ -850,7 +869,64 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
 
+class _FastBindServer(ThreadingHTTPServer):
+    """ThreadingHTTPServer that skips socket.getfqdn() during bind.
+
+    WHY (T4a): http.server.HTTPServer.server_bind() calls socket.getfqdn()
+    on the bound address AFTER socket.bind() but BEFORE listen(). Measured
+    on this machine: getfqdn('127.0.0.1')=47.9s and getfqdn('0.0.0.0')=48.0s
+    while gethostbyaddr('127.0.0.1')=0.00s — the DNS stack stalls ~35-50s,
+    so startup only reached READY after 36s and the acceptance's `sleep 6`
+    could never see a serving server (the socket was bound but not yet
+    listening, which also produces confusing EADDRINUSE on a second start).
+    server_name/server_port are only consulted by CGI redirect logic, which
+    this dashboard does not use, so we set them by hand from getsockname().
+    """
+
+    def server_bind(self):
+        socketserver.TCPServer.server_bind(self)  # setsockopt(SO_REUSEADDR)+bind
+        host, port = self.socket.getsockname()[:2]
+        self.server_name = host
+        self.server_port = port
+
+
+def _probe_existing(port, timeout=1.0):
+    """T4a single-instance probe: is anything already serving on 127.0.0.1:port?
+
+    Returns:
+      int  -> pid reported by an existing /api/health (only our server
+              serves it, so this is the live dashboard's pid)
+      -1   -> port answers but no pid could be read (foreign occupant)
+      None -> nothing accepted a connection; port is free to bind
+
+    Never raises. Order: quick GET /api/health first (gives us the pid),
+    fall back to a bare TCP connect (proves the port is occupied even if
+    the occupant doesn't speak HTTP)."""
+    try:
+        with urlopen("http://127.0.0.1:%d/api/health" % port,
+                     timeout=timeout) as r:
+            data = json.loads(r.read().decode("utf-8"))
+        pid = data.get("pid")
+        return pid if isinstance(pid, int) else -1
+    except Exception:
+        pass
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=0.5):
+            return -1
+    except OSError:
+        return None
+
+
 def main():
+    # T4a #1 - single instance: probe BEFORE any side effects (data dirs,
+    # alerter, sampler threads, .sampler.pid lock, bind). If 8123 already
+    # answers, print the live pid and exit 0 without touching anything --
+    # no second bind, no kill of the existing server.
+    existing = _probe_existing(PORT)
+    if existing is not None:
+        print("ALREADY_RUNNING pid=%d" % existing, flush=True)
+        sys.exit(0)
+
     os.makedirs(DATA_DIR, exist_ok=True)
     roll_store()
     alerts.start_alerter(source=lambda: SAMPLER.current if SAMPLER else None)
@@ -873,10 +949,31 @@ def main():
     threading.Thread(target=HIST.tail_loop, name="syswatch-tail",
                      daemon=True).start()
 
-    srv = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
+    # T4a: bind loopback only -- never expose the dashboard to the network
+    # (tray and every consumer already use 127.0.0.1). _FastBindServer skips
+    # the ~48s getfqdn() stall in the stdlib bind path (see class docstring).
+    srv = _FastBindServer(("127.0.0.1", PORT), Handler)
     log_event("server", "dashboard v2 ready on port %d" % PORT)
     print("SYSWATCH_DASHBOARD_READY on port %d" % PORT, flush=True)
-    srv.serve_forever()
+
+    # T4a #3 - clean SIGTERM: shutdown() blocks until the serve_forever()
+    # loop exits, and that loop runs in THIS thread, so calling shutdown()
+    # directly inside the handler would deadlock. Hop to a helper thread;
+    # serve_forever() then returns and the finally block closes the socket,
+    # releasing the port (well inside the 2s budget).
+    def _on_sigterm(signum, frame):
+        threading.Thread(target=srv.shutdown, name="sigterm-shutdown",
+                         daemon=True).start()
+
+    try:
+        signal.signal(signal.SIGTERM, _on_sigterm)
+    except ValueError:
+        pass  # not the main thread (in-process tests); default SIGTERM applies
+    try:
+        srv.serve_forever()
+    finally:
+        srv.server_close()  # closes the listening socket -> port released
+        print("SYSWATCH_DASHBOARD_STOPPED port=%d" % PORT, flush=True)
 
 
 if __name__ == "__main__":
