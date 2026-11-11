@@ -10,3 +10,9 @@ logs/
 .cgr-dir-mtimes.json
 .cgr-hash-cache.json
 .cgr-parser-fingerprint
+
+# regenerable measurement artifacts (T0)
+*.csv
+dashboard/.sampler.pid
+.DS_Store
+target/
