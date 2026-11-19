@@ -14,3 +14,10 @@ serde_json = "1"
 futures-lite = "2"
 tokio = { version = "1", features = ["full"] }
 thiserror = "2"
+
+# T28 — pairing: X25519 ECDH + ChaCha20Poly1305.
+# `ring` is already in the tree (via iroh/quinn); naming it here makes the
+# ECDH/HKDF calls explicit rather than relying on a transitive re-export.
+ring = "0.17"
+chacha20poly1305 = "0.10"
+zeroize = "1"

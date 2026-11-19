@@ -56,7 +56,16 @@ impl IrohEndpoint {
     /// `bind` is async because iroh must open UDP sockets and start its
     /// magicsock actor before a `NodeId` can be dialled.
     pub async fn bind(identity: &DeviceIdentity) -> Result<Self, NetError> {
-        Self::bind_builder(builder_for(identity)).await
+        Self::bind_builder(builder_for(identity, &[ECHO_ALPN])).await
+    }
+
+    /// Bind an endpoint that speaks only `alpns`.
+    ///
+    /// Same production posture as [`IrohEndpoint::bind`] (default relay mode),
+    /// used by the pairing layer from T28 on: a pairing endpoint must not offer
+    /// the echo protocol, and an echo endpoint must not accept pairing.
+    pub async fn bind_alpns(identity: &DeviceIdentity, alpns: &[&[u8]]) -> Result<Self, NetError> {
+        Self::bind_builder(builder_for(identity, alpns)).await
     }
 
     /// Bind an endpoint restricted to loopback, with relays and discovery off.
@@ -65,12 +74,15 @@ impl IrohEndpoint {
     /// network, so tests (and offline demos) can connect two endpoints on one
     /// machine without leaving it.
     pub async fn bind_local(identity: &DeviceIdentity) -> Result<Self, NetError> {
-        let builder = builder_for(identity)
-            .bind_addr_v4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 0))
-            .bind_addr_v6(SocketAddrV6::new(Ipv6Addr::LOCALHOST, 0, 0, 0))
-            .relay_mode(RelayMode::Disabled)
-            .clear_discovery();
-        Self::bind_builder(builder).await
+        Self::bind_builder(builder_for(identity, &[ECHO_ALPN]).local()).await
+    }
+
+    /// [`IrohEndpoint::bind_local`] for an arbitrary ALPN set.
+    pub async fn bind_local_alpns(
+        identity: &DeviceIdentity,
+        alpns: &[&[u8]],
+    ) -> Result<Self, NetError> {
+        Self::bind_builder(builder_for(identity, alpns).local()).await
     }
 
     async fn bind_builder(builder: iroh_net::endpoint::Builder) -> Result<Self, NetError> {
@@ -95,18 +107,36 @@ impl IrohEndpoint {
     /// with [`IrohEndpoint::add_node_addr`]. Use
     /// [`IrohEndpoint::connect_addr`] when you have a fresh [`NodeAddr`].
     pub async fn connect(&self, node_id: PublicKey) -> Result<Connection, NetError> {
-        self.endpoint
-            .connect(NodeAddr::new(node_id), ECHO_ALPN)
-            .await
-            .map_err(iroh_err)
+        self.connect_alpn(node_id, ECHO_ALPN).await
     }
 
     /// Dial a peer at a known address (direct addresses and/or relay URL).
     pub async fn connect_addr(&self, addr: NodeAddr) -> Result<Connection, NetError> {
+        self.connect_addr_alpn(addr, ECHO_ALPN).await
+    }
+
+    /// [`IrohEndpoint::connect`] for an explicit application protocol.
+    pub async fn connect_alpn(
+        &self,
+        node_id: PublicKey,
+        alpn: &[u8],
+    ) -> Result<Connection, NetError> {
         self.endpoint
-            .connect(addr, ECHO_ALPN)
+            .connect(NodeAddr::new(node_id), alpn)
             .await
             .map_err(iroh_err)
+    }
+
+    /// [`IrohEndpoint::connect_addr`] for an explicit application protocol.
+    ///
+    /// ALPN is negotiated in the QUIC handshake, so dialing a peer that does not
+    /// offer `alpn` fails here rather than on the first write.
+    pub async fn connect_addr_alpn(
+        &self,
+        addr: NodeAddr,
+        alpn: &[u8],
+    ) -> Result<Connection, NetError> {
+        self.endpoint.connect(addr, alpn).await.map_err(iroh_err)
     }
 
     /// Teach this endpoint where a peer lives, so a later
@@ -154,10 +184,28 @@ impl IrohEndpoint {
     }
 }
 
-fn builder_for(identity: &DeviceIdentity) -> iroh_net::endpoint::Builder {
+fn builder_for(identity: &DeviceIdentity, alpns: &[&[u8]]) -> iroh_net::endpoint::Builder {
     Endpoint::builder()
         .secret_key(identity.secret().clone())
-        .alpns(vec![ECHO_ALPN.to_vec()])
+        .alpns(alpns.iter().map(|alpn| alpn.to_vec()).collect())
+}
+
+/// Restrict a builder to loopback: no relay, no discovery, nothing off-box.
+///
+/// A free function would have to be called after `builder_for` and before
+/// `bind`; a trait keeps the loopback decision in one place instead of three
+/// builder calls repeated at every bind variant.
+trait LocalOnly {
+    fn local(self) -> Self;
+}
+
+impl LocalOnly for iroh_net::endpoint::Builder {
+    fn local(self) -> Self {
+        self.bind_addr_v4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 0))
+            .bind_addr_v6(SocketAddrV6::new(Ipv6Addr::LOCALHOST, 0, 0, 0))
+            .relay_mode(RelayMode::Disabled)
+            .clear_discovery()
+    }
 }
 
 fn iroh_err(err: impl std::fmt::Display) -> NetError {
