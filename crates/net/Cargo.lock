@@ -4475,6 +4475,7 @@ dependencies = [
 name = "syswatch-net"
 version = "0.3.0"
 dependencies = [
+ "futures-lite",
  "iroh",
  "iroh-base",
  "iroh-net",

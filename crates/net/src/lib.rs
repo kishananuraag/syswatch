@@ -3,6 +3,10 @@
 //! Every device generates an ed25519 keypair on first run. The public key
 //! (NodeId) is the device's identity — no accounts, no registration.
 
+pub mod endpoint;
+
+pub use endpoint::{IrohEndpoint, ECHO_ALPN, ECHO_ALPN_STR, MAX_ECHO_BYTES};
+
 use iroh_net::key::SecretKey;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -110,6 +114,8 @@ pub enum NetError {
     InvalidKey,
     #[error("iroh error: {0}")]
     Iroh(String),
+    #[error("stream error: {0}")]
+    Stream(String),
 }
 
 #[cfg(test)]
