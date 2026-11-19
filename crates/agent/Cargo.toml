@@ -1,0 +1,28 @@
+[package]
+name = "syswatch-agent"
+version = "0.4.0"
+edition = "2024"
+license = "Apache-2.0"
+description = "SysWatch HTTP agent — serves the dashboard API from Rust (axum)"
+
+[dependencies]
+syswatch-core = { path = "../core" }
+syswatch-store = { path = "../store" }
+syswatch-sensors-macos = { path = "../sensors-macos" }
+axum = "0.8"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal", "time"] }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["fs", "cors"] }
+# preserve_order: /api/current keeps the Python server's key order, so a
+# side-by-side `diff` of the two payloads shows value differences, not
+# alphabetical noise.
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+sysinfo = "0.33"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[[bin]]
+name = "syswatch-agent"
+path = "src/main.rs"
