@@ -14,6 +14,34 @@ use std::sync::Mutex;
 use crate::config::dirs_home;
 use crate::stats::Snapshot;
 
+/// Platform-appropriate writable data directory for interactive runs.
+/// macOS: ~/Library/Application Support
+/// Windows: %LOCALAPPDATA% (fallback %USERPROFILE%\AppData\Local)
+/// Other:  $XDG_DATA_HOME (fallback ~/.local/share)
+fn interactive_data_dir() -> Option<PathBuf> {
+    #[cfg(target_os = "macos")]
+    {
+        std::env::var("HOME")
+            .ok()
+            .map(PathBuf::from)
+            .map(|h| h.join("Library/Application Support"))
+    }
+    #[cfg(windows)]
+    {
+        std::env::var("LOCALAPPDATA")
+            .ok()
+            .map(PathBuf::from)
+            .or_else(|| dirs_home().map(|h| h.join("AppData").join("Local")))
+    }
+    #[cfg(not(any(target_os = "macos", windows)))]
+    {
+        std::env::var("XDG_DATA_HOME")
+            .ok()
+            .map(PathBuf::from)
+            .or_else(|| dirs_home().map(|h| h.join(".local").join("share")))
+    }
+}
+
 #[cfg(windows)]
 use std::os::windows::fs::OpenOptionsExt;
 
@@ -35,11 +63,7 @@ pub(crate) fn log_dir() -> Option<PathBuf> {
             .map(PathBuf::from)
             .map(|b| b.join("syswatch").join("logs"));
     }
-    let base = std::env::var("LOCALAPPDATA")
-        .ok()
-        .map(PathBuf::from)
-        .or_else(|| dirs_home().map(|h| h.join("AppData").join("Local")))?;
-    Some(base.join("syswatch").join("logs"))
+    Some(interactive_data_dir()?.join("syswatch").join("logs"))
 }
 
 /// All candidate log directories (service + interactive), deduplicated.
@@ -53,10 +77,8 @@ pub(crate) fn log_dirs() -> Vec<PathBuf> {
     if let Ok(pd) = std::env::var("PROGRAMDATA") {
         dirs.push(PathBuf::from(pd).join("syswatch").join("logs"));
     }
-    if let Ok(la) = std::env::var("LOCALAPPDATA") {
-        dirs.push(PathBuf::from(la).join("syswatch").join("logs"));
-    } else if let Some(h) = dirs_home() {
-        dirs.push(h.join("AppData").join("Local").join("syswatch").join("logs"));
+    if let Some(base) = interactive_data_dir() {
+        dirs.push(base.join("syswatch").join("logs"));
     }
     dirs.sort();
     dirs.dedup();
@@ -82,6 +104,15 @@ pub fn prune(retention_days: u64) {
         if expired == Some(true) {
             let _ = fs::remove_file(entry.path());
         }
+    }
+}
+
+/// Append one sample to the log, on whichever storage path is configured.
+pub fn write(snap: &Snapshot, cascade: bool) {
+    if cascade {
+        crate::storage::observe(snap);
+    } else {
+        append(snap);
     }
 }
 
@@ -126,6 +157,15 @@ pub fn append(snap: &Snapshot) {
         let _ = writer.write_all(b"\n");
         // Flush every tick so a crash / kill never loses the last sample.
         let _ = writer.flush();
+    }
+}
+
+/// Explicitly flush the cached log writer (used during graceful shutdown).
+pub fn flush() {
+    if let Ok(mut guard) = LOG_FILE.lock() {
+        if let Some(writer) = guard.writer.as_mut() {
+            let _ = writer.flush();
+        }
     }
 }
 

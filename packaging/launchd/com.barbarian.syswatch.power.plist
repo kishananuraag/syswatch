@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.barbarian.syswatch.power — ROOT LaunchDaemon (system domain).
+
+  Installed ONLY by the dashboard's one-click grant flow
+  (POST /api/permissions/grant?id=package_power) through a single macOS admin
+  prompt.  It is NOT installed by scripts/install.sh (that is the T8
+  LaunchAgent path, user domain, no privilege).  Nothing here runs at page load.
+
+  Why root: /usr/bin/powermetrics refuses to run as a normal user
+  ("powermetrics must be invoked as the superuser").  Its output is the only
+  temperature / package-power / Neural-Engine source macOS exposes.
+
+  WHAT RUNS HERE (T19) — one binary, not a shell script plus a helper:
+    /usr/local/libexec/syswatch/syswatch-powerd --interval-ms 15000 --out-dir …
+  It spawns powermetrics, parses the text, reads the AppleSMC temperature keys
+  through IOKit in-process, and writes ONE JSON snapshot atomically
+  (sample.json.tmp → fsync → rename).  Before T19 this was /bin/sh driving
+  syswatch_power_sampler.sh, forking a separate smc_temp binary twice a cycle.
+
+  T20 — the cadence is 15 s, not 5 s.  powermetrics is the dominant cost of
+  this daemon (it is the sample source itself), so sampling it 4×/min instead
+  of 12×/min is what puts the agent inside the 1.5–2 % CPU budget.  The
+  dashboard's power/temperature ring samples on the same 15 s cadence, so the
+  timeline resolution and the daemon never disagree.  Config key:
+  `powermetrics.interval_ms = 15000` (see config.example.toml).
+
+  Real flags the wrapper passes to powermetrics — verified with
+  `powermetrics -h` on macOS 15.8.3 (24H241).  Note that the format flag is
+  NOT a file flag:
+    sample rate     -i N   milliseconds between samples (default 5000)
+    sample count    -n 1   exactly one sample, then exit (the daemon loops)
+    format          -f text
+    samplers        -s thermal,cpu_power,gpu_power,ane_power (+ maybe smc)
+
+  The unprivileged dashboard only READS
+  __HOME__/Library/Application Support/syswatch/root/sample.json
+  and treats a snapshot older than 30 s as absent (never a stale number
+  presented as live).  No password is stored, echoed or logged anywhere.
+-->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.barbarian.syswatch.power</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/usr/local/libexec/syswatch/syswatch-powerd</string>
+		<string>--interval-ms</string>
+		<string>15000</string>
+		<string>--out-dir</string>
+		<string>__HOME__/Library/Application Support/syswatch/root</string>
+	</array>
+	<key>UserName</key>
+	<string>root</string>
+	<key>GroupName</key>
+	<string>wheel</string>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>KeepAlive</key>
+	<true/>
+	<key>ThrottleInterval</key>
+	<integer>10</integer>
+	<key>ProcessType</key>
+	<string>Background</string>
+	<key>LowPriorityIO</key>
+	<true/>
+	<key>Nice</key>
+	<integer>10</integer>
+	<key>StandardOutPath</key>
+	<string>__HOME__/Library/Logs/syswatch/power-daemon.log</string>
+	<key>StandardErrorPath</key>
+	<string>__HOME__/Library/Logs/syswatch/power-daemon.log</string>
+</dict>
+</plist>

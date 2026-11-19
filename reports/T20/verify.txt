@@ -1,0 +1,127 @@
+T20 — verification evidence (pasted verbatim from the runs on this Mac, 2026-11-19)
+
+=============================================================
+1. Acceptance commands (brief §Acceptance)
+=============================================================
+
+$ python3 -m py_compile dashboard/server.py
+exit=0
+
+$ node --check dashboard/static/app.js
+exit=0
+
+$ grep -rn "15000" dashboard/ src/ packaging/ | head
+dashboard/server.py:875:POWERMETRICS_INTERVAL_MS = int(os.environ.get("SYSWATCH_POWERMETRICS_MS", "15000"))
+dashboard/server.py:1405:    # T20: the cadence has ONE source of truth.  The template ships 15000 ms;
+Binary file dashboard/__pycache__/server.cpython-315.pyc matches
+dashboard/static/app.js:2811:  if (!force && SPARK.at && Date.now() - SPARK.at < 15000) return;
+dashboard/static/app.js:3946:  if (hit && Date.now() - hit.at < 15000) return;
+dashboard/static/app.js:5749:  setInterval(loadLogs, 15000);
+dashboard/history/_sampler_heartbeat.log:610:2026-11-15T16:26:21+00:00 n=15000
+dashboard/history/_sampler_heartbeat.log:2860:2026-11-17T11:04:36+00:00 n=150000
+src/bin/powerd.rs:19://! Every `--interval-ms` (default 15000 — T20: powermetrics is the dominant
+src/bin/powerd.rs:922:const DEFAULT_INTERVAL_MS: u64 = 15000;
+
+$ grep -rn "15000" packaging/ config.example.toml src/config.rs src/bin/powerd.rs
+packaging/launchd/com.barbarian.syswatch.power.plist:16:    /usr/local/libexec/syswatch/syswatch-powerd --interval-ms 15000 --out-dir …
+packaging/launchd/com.barbarian.syswatch.power.plist:27:  `powermetrics.interval_ms = 15000` (see config.example.toml).
+packaging/launchd/com.barbarian.syswatch.power.plist:50:		<string>15000</string>
+config.example.toml:19:interval_ms = 15000
+src/config.rs:41:pub const DEFAULT_POWERMETRICS_INTERVAL_MS: u64 = 15000;
+src/bin/powerd.rs:19://! Every `--interval-ms` (default 15000 — T20: powermetrics is the dominant
+src/bin/powerd.rs:922:const DEFAULT_INTERVAL_MS: u64 = 15000;
+src/bin/powerd.rs:929:  --interval-ms N     sample interval in milliseconds (default 15000, min 1000)
+
+$ CARGO_BUILD_JOBS=4 nice -n 10 cargo build --release
+warning: `syswatch` (lib) generated 19 warnings
+warning: `syswatch` (bin "syswatch") generated 20 warnings
+    Finished `release` profile [optimized] target(s) in 7.50s
+
+$ ./target/release/syswatch-powerd --help | head -5
+syswatch-powerd — root power/temperature daemon (T19)
+
+usage: syswatch-powerd [options]
+
+  --interval-ms N     sample interval in milliseconds (default 15000, min 1000)
+
+=============================================================
+2. Supervisor browser checks
+   Served from a copy of dashboard/ on :8161 (8123 never touched),
+   headless Chrome 1440x900, DOM measured inside the page.
+=============================================================
+
+== T20 supervisor checks ==
+1  L1 one viewport: PASS | chips 6 | tiles 3 | stage scrollHeight 852 <= clientHeight 852 | wide chart false
+2  hover tooltip: PASS | visible true | canvas 192x30 | below chip true | source: host_processor_info · 1 s | pointer-events none
+   hides 200 ms after leave: PASS
+3  inline expansion: PASS | .l2-inline true | slot in flow: bentoTiles | open chip opacity 1 | rest opacity 0.6 | L2 measures 3 | L2 consumers 5 | coverage: measured 100 % of 1h · 436 points · live 1 s sampler
+4  L3 details toggle: PASS | l3 visible true | height 252 | findings 4 | records 3 | per-core 8 | peaks 2 | toggle label: details ▴
+   collapsed again: PASS
+5  thermal tile: PASS | num: 40.1 °C | meta: GPU 39.6 °C · pressure Nominal | spark 437x150
+6a CPU L2 chart scroll: scrollWidth 1308 > clientWidth 959 | overflowX auto | min-width 720px
+6b thermal L2 chart: scrollWidth 951 clientWidth 951 | overflowX auto | min-width 720px | scrollbar 6px rule: true | SMC sensor rows 18 | temp coverage: measured 0 % of 1h · 1 °C samples (live ring) · powermetrics 15 s
+   thermal L3 raw SMC table rows: 18
+7  L1 has no coverage/findings/measures: PASS | cov 0 | findings 0 | measures 0
+8  powermetrics interval: PASS | payload: {"interval_ms":15000,"sampling_s":15,"daemon_arg":"--interval-ms 15000","sources":"syswatch-powerd: powermetrics package/CPU/GPU/ANE watts + AppleSMC die temperatures"} | coverage_text: sampling every 15 s
+9  knowledge moved to settings: PASS | groups 10 | header tabs: Instrument / Apps / Analytics / ⚙
+DONE
+
+Supporting run (same build): all nine expansions open with a real chart —
+  battery    -> Battery        | cov: measured 14 % of 1h · 34 points · 15 s power ring
+  power      -> Package power  | cov: measured 100 % of 1h · sampling every 15 s · 34 live + 5 history samples · since 11:11 (61 min)
+  gpu        -> GPU            | cov: measured 14 % of 1h · 97 points · ioreg IOAccelerator Device Utilization %, 5 s sample
+  memory     -> Memory         | cov: measured 100 % of 1h · 445 points · live 1 s sampler
+  load       -> Load average   | measures 3 | attribution · by process (no per-process store — honest reason)
+  app panel opens + closes (the one overlay that is left: an app's own series)
+
+Range change while open:
+  open cpu, cov: measured 100 % of 1h · 444 points · live 1 s sampler
+  after 5m: open still: true | heading: CPU | cov: measured 100 % of 5m · 263 points | measures: 3 | consumers: 5
+Switch/collapse:
+  switch to load: Load average | measures: 3
+  re-click collapses: true
+
+=============================================================
+3. Screenshots (this machine, live data)
+=============================================================
+reports/T20/L1.png          six chips + three tiles, one viewport, no chart
+reports/T20/L2-cpu.png      CPU expanded in flow, rest of L1 at 0.6, chart+measures+consumers
+reports/T20/L3-cpu.png      details open: findings, records, per-core, peak moments
+reports/T20/L2-thermal.png  Thermal: temp-over-time chart + 18 SMC sensor rows
+
+=============================================================
+4. Known gaps (measured, not guessed)
+=============================================================
+a) The server process that serves :8123 (PID 50217, LaunchAgent
+   com.barbarian.syswatch.dashboard) is still the PRE-T20 code:
+
+   $ curl -s "http://127.0.0.1:8123/api/power/history?range=1h" | ...
+   sampling_s: 5.0 | powermetrics block: None | coverage_text: sampling every 5 s · 61 samples
+   points: 61 | points carrying cpu_temp_c: 0
+
+   The static files it serves are the new ones (read from disk per request), so
+   the new UI is live but the ring behind it is still 5 s with no temperatures.
+   Loading the server-side half needs one restart — NOT done here, because
+   `pkill -f dashboard/server.py` is forbidden:
+
+       launchctl kickstart -k gui/$(id -u)/com.barbarian.syswatch.dashboard
+
+b) The installed root daemon is still the pre-T19 shell sampler at 5 s:
+
+   $ ps -Ao pid=,ppid=,command= | grep power_sampler
+   65591     1 /bin/sh /usr/local/libexec/syswatch/power_sampler.sh 5000 …
+   81778 65591 /bin/sh /usr/local/libexec/syswatch/power_sampler.sh 5000 …
+   81779 81778 /usr/bin/powermetrics -n 1 -i 5000 -f text -s thermal
+
+   /Library/LaunchDaemons/com.barbarian.syswatch.power.plist runs
+   power_sampler.sh, not syswatch-powerd. The repo now ships 15 s
+   (powerd default + plist template + `powermetrics.interval_ms`), but the
+   machine keeps sampling at 5 s until the grant flow installs T19/T20 — that
+   needs the admin prompt, so it is Kishan's call, not mine.
+
+c) `tools/verify_T20.sh` does not exist in this repo (tools/ has t5, t7c, t8,
+   t10, t11). Nothing under tools/ was created or edited.
+
+d) The thermal ring restarted with this run, so its chart starts empty and
+   fills at 15 s. The empty state is the honest one: 1 °C sample = 0 % coverage,
+   never a flat line.

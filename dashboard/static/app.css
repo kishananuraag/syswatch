@@ -1,0 +1,2385 @@
+/* syswatch — "calm instrument" (T17A theme pass)
+ *
+ * Rules encoded here, not just described:
+ *   - depth is a LIGHTNESS step (base → surface). Elevation NEVER uses a
+ *     drop shadow: grep this file for `box-shadow` and it must come back empty.
+ *   - one accent: #5EEAD4. The only two other hues in the product are the warn
+ *     state #F87171 and the battery amber #F59E0B.
+ *   - one typeface, tabular numerals everywhere (declared on html/body so every
+ *     descendant inherits — no component can opt out).
+ *   - layout animation is forbidden: only opacity/transform/border-color, 150 ms.
+ *   - hover is a border-colour step, never a lift.
+ */
+:root {
+  --base: #121317;          /* page, never #000 (halation) */
+  --surface: #181A1F;       /* every card / chip / tile */
+  --line: #262A33;          /* hairlines, gridlines */
+  --line-hover: #303540;    /* hover border step, scrollbar thumb */
+  --fg: #E6E9EF;            /* primary text */
+  --muted: #8B93A7;         /* labels, axis titles */
+  --dim: #5B6273;           /* axes, coverage lines */
+  --accent: #5EEAD4;        /* the ONE accent colour */
+  --warn: #F87171;          /* warn state only */
+  --amber: #F59E0B;         /* battery state only */
+
+  /* legacy token names kept so older rules keep their meaning */
+  --elevated: #1E2127;      /* one lightness step above surface */
+  --border: var(--line);
+  --text: var(--fg);
+  --ok: var(--muted);       /* no second accent: "ok" is a grey, not a hue */
+  --hot: var(--warn);
+  --gutter: 12px;
+  --radius: 10px;
+  --dur: 150ms;
+  --ease: cubic-bezier(.4, 0, .2, 1);
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
+          system-ui, sans-serif;
+  --shell-h: 48px;          /* the sticky topbar's height */
+}
+
+* { box-sizing: border-box; }
+
+/* `hidden` must win over any display: we set on a component (hero band, section
+ * index, tab dot, brush overlay) — the UA sheet alone loses to a class rule. */
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--base);
+  color: var(--fg);
+  font: 15px/1.55 var(--font);
+  -webkit-font-smoothing: antialiased;
+  /* every number in the product is tabular: inherited, so a component cannot
+   * opt out by accident */
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  overflow: hidden;          /* L1 is one viewport; pages scroll inside .stage */
+}
+
+/* the product never uses a drop shadow — depth is a lightness step */
+* { box-shadow: none !important; }
+
+/* 6 px scrollbars, thumb #303540, everywhere (L1 chart box, drawer, lists) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-hover) transparent;
+}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--line-hover);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover { background: #3A4050; }
+
+
+/* every number in the product: tabular, so columns never jitter */
+.num, .hero, .chip, th.num, td.num, .stat-row .val, .core-row, .table td:first-child {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================ shell (row 0)
+ * brand · 3 views · gear on the left, the ONE range pill centred, live state on
+ * the right. Sticky: the pill is reachable from anywhere in the product. */
+.shell {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: grid;
+  /* 1fr | auto | 1fr: the pill's column is exactly the centre of the bar, so
+   * the range control is centred by layout, not by a magic offset */
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  height: var(--shell-h);
+  padding: 0 16px;
+  background: var(--base);
+  border-bottom: 1px solid var(--line);
+}
+.shell-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.brand {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: .01em;
+  white-space: nowrap;
+}
+.brand span { color: var(--muted); font-weight: 400; }
+
+.tabs {
+  display: flex;
+  gap: 2px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex: 1 1 auto;
+}
+.tabs::-webkit-scrollbar { display: none; }
+
+.tab {
+  appearance: none;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 6px 10px 5px;
+  color: var(--muted);
+  font: 500 13px/1.2 var(--font);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--dur) var(--ease),
+              border-color var(--dur) var(--ease);
+}
+.tab:hover { color: var(--text); }
+.tab[aria-selected="true"] {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+.shell-ctl {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  min-width: 0;
+}
+
+.ranges { display: flex; gap: 1px; }
+
+.range {
+  appearance: none;
+  background: none;
+  border: 0;
+  border-radius: 5px;
+  padding: 4px 7px;
+  color: var(--muted);
+  font: 500 12px/1.2 var(--font);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: color var(--dur) var(--ease),
+              background var(--dur) var(--ease);
+}
+.range:hover { color: var(--text); background: var(--surface); }
+.range[aria-pressed="true"] {
+  color: var(--text);
+  background: var(--elevated);
+  font-weight: 600;
+}
+
+.live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--accent);
+  white-space: nowrap;
+}
+.live .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pulse 2.4s ease-in-out infinite;
+}
+.live.is-stale { color: var(--muted); }
+.live.is-stale .dot { animation: none; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .35; }
+}
+
+/* ============================================================ stage */
+.stage {
+  padding: 12px 16px 14px;
+  height: calc(100vh - var(--shell-h));
+  overflow: hidden;         /* L1 is one viewport, by construction */
+}
+/* Apps / Analytics are documents, not instruments: they scroll inside the stage,
+ * so the document itself never scrolls and the sticky bar cannot be lost. */
+.stage.is-page {
+  overflow-y: auto;
+  max-width: 1560px;
+  margin: 0 auto;
+}
+/* T20: opening an L2 expansion pushes L1 down, so the stage has to scroll —
+ * but only while something is expanded. L1 alone never scrolls. */
+.stage.is-expanded { overflow-y: auto; }
+
+.view {
+  opacity: 1;
+  transition: opacity var(--dur) var(--ease);
+}
+.view.is-out { opacity: 0; }
+
+/* ============================================================ cards */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--gutter);
+}
+.gauges {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--gutter);
+  margin-top: var(--gutter);
+}
+@media (max-width: 1100px) {
+  .cards, .gauges { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 720px) {
+  .cards, .gauges { grid-template-columns: minmax(0, 1fr); }
+}
+
+.card {
+  background: var(--surface);
+  border: 0;
+  border-radius: var(--radius);
+  padding: 14px 16px 12px;
+  min-width: 0;
+}
+
+.card.kpi {
+  cursor: pointer;
+  transition: background var(--dur) var(--ease);
+}
+.card.kpi:hover, .card.kpi:focus-visible { background: var(--elevated); outline: none; }
+
+.micro {
+  font-size: .75rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.hero {
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -.01em;
+  color: var(--text);
+}
+.hero .unit {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--muted);
+  margin-left: 2px;
+}
+.hero.is-hot { color: var(--hot); }
+.hero.is-warn { color: var(--warn); }
+.hero.is-ok { color: var(--ok); }
+
+.attrib {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+  min-height: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chip {
+  font-size: 11px;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  padding: 0;
+  white-space: nowrap;
+}
+.chip b { color: var(--text); font-weight: 600; }
+.chip.is-ok { color: var(--ok); }
+.chip.is-warn { color: var(--warn); }
+.chip.is-hot { color: var(--hot); }
+
+.spark { position: relative; height: 92px; margin-top: 8px; }
+.spark.tall { height: 260px; }
+.chart-box { position: relative; height: 200px; }
+
+/* ============================================================ gauges */
+.gauge-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.gauge-hero { font-size: 24px; font-weight: 600; margin-top: 2px; }
+
+.bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--elevated);
+  overflow: hidden;
+  margin: 10px 0 8px;
+}
+.bar > i {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: var(--accent);
+  transform: scaleX(calc(var(--w, 0) / 100));
+  transform-origin: left center;
+  transition: transform var(--dur) var(--ease);
+}
+.bar > i.is-ok { background: var(--ok); }
+.bar > i.is-warn { background: var(--warn); }
+.bar > i.is-hot { background: var(--hot); }
+
+/* ============================================================ sections */
+.sec-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.sec-head h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: .01em;
+}
+.sec-hero {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.sec-hero .hero { font-size: 40px; }
+
+.panel {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: var(--gutter);
+}
+.panel > .micro { margin-bottom: 8px; }
+
+.chart-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+
+/* stat rows: label left, tabular numeral right, hairline separator */
+.stats { margin-top: 2px; }
+.stat-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.stat-row:last-child { border-bottom: 0; }
+.stat-row .label { color: var(--muted); }
+.stat-row .val { color: var(--text); }
+
+.cols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--gutter);
+}
+@media (max-width: 900px) { .cols { grid-template-columns: minmax(0, 1fr); } }
+
+/* ============================================================ tables */
+.table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.table th {
+  text-align: left;
+  font-size: .75rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0 8px 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+.table td {
+  padding: 7px 8px 7px 0;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+.table tr:last-child td { border-bottom: 0; }
+.table .num, .table th.num { text-align: right; padding-right: 0; }
+.table .name { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* bar-in-row (Apps): the bar is the row's own scale, no axis needed */
+.rowbar {
+  display: inline-block;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--elevated);
+  vertical-align: middle;
+  width: 84px;
+  margin-right: 8px;
+}
+.rowbar > i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--accent);
+}
+
+/* ============================================================ cores */
+.core-row {
+  display: grid;
+  grid-template-columns: 132px 1fr 62px;
+  gap: 10px;
+  align-items: center;
+  padding: 5px 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.core-bar { height: 5px; border-radius: 3px; background: var(--elevated); overflow: hidden; }
+.core-bar > i { display: block; height: 100%; background: var(--accent); }
+.core-bar > i.is-warn { background: var(--warn); }
+.core-bar > i.is-hot { background: var(--hot); }
+.core-row .val { text-align: right; color: var(--text); }
+.cluster-row { display: flex; gap: var(--gutter); margin-bottom: 10px; }
+.cluster {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.cluster .micro { margin-bottom: 4px; }
+
+/* ============================================================ analytics */
+.findings {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text);
+  max-width: 90ch;
+}
+.findings p { margin: 0 0 6px; }
+
+/* ============================================================ misc */
+.na { color: var(--muted); font-style: italic; }
+.reason { font-size: 11px; color: var(--muted); }
+.reason.is-warn { color: var(--warn); }
+
+.pill {
+  display: inline-block;
+  font-size: 11px;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+
+/* events strip: below the instrument, never competing with it */
+#logs {
+  max-width: 1560px;
+  margin: 0 auto 24px;
+  padding: 0 18px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.foot {
+  max-width: 1560px;
+  margin: 0 auto 28px;
+  padding: 10px 18px 0;
+  color: var(--muted);
+  font-size: 11px;
+  border-top: 1px solid var(--border);
+}
+.foot code { font: inherit; color: var(--text); }
+#logs > summary {
+  cursor: pointer;
+  font-size: .75rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 8px 0;
+  list-style: none;
+}
+#logs > summary::-webkit-details-marker { display: none; }
+#logs > summary::before { content: "▸ "; }
+#logs[open] > summary::before { content: "▾ "; }
+#logLines {
+  height: 132px;
+  overflow-y: auto;
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: var(--muted);
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ====================================================== T14B components ===
+ * E/P cluster rings · sensor rows · cross-filter chips · slicers · drawer.
+ * Same rules: lightness for depth, no shadows, one accent, tabular numerals.
+ */
+
+/* --- cluster rings (P/E) ---------------------------------------------- */
+.rings {
+  display: flex;
+  gap: 22px;
+  flex-wrap: wrap;
+  margin: 4px 0 16px;
+}
+.ring {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  font: inherit;
+  color: var(--muted);
+  cursor: pointer;
+}
+.ring:focus-visible { outline: none; }
+.ring:focus-visible .ring-dial { outline: 1px solid var(--accent); outline-offset: 4px; }
+.ring:hover .ring-dial { filter: brightness(1.15); }
+.ring-dial {
+  --p: 0;
+  position: relative;
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: conic-gradient(var(--accent) calc(var(--p) * 1%), var(--elevated) 0);
+}
+.ring-dial::before {
+  content: "";
+  position: absolute;
+  inset: 9px;
+  border-radius: 50%;
+  background: var(--surface);
+}
+.ring-dial.is-warn { background: conic-gradient(var(--warn) calc(var(--p) * 1%), var(--elevated) 0); }
+.ring-dial.is-hot { background: conic-gradient(var(--hot) calc(var(--p) * 1%), var(--elevated) 0); }
+.ring-val {
+  position: relative;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.ring-sub { font-size: 11px; color: var(--muted); }
+.ring-label { font-size: 12px; color: var(--text); }
+/* per-core ticks under each cluster ring: one bar per logical CPU, in
+ * index order, so a busy P core is visible without opening the core list */
+.ring-ticks {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  width: 92px;
+  height: 24px;
+  margin-top: 2px;
+}
+.ring-tick {
+  flex: 1 1 0;
+  min-width: 0;
+  background: var(--accent);
+  border-radius: 2px 2px 0 0;
+  opacity: 0.9;
+}
+.ring-tick.is-warn { background: var(--warn); }
+.ring-tick.is-hot { background: var(--hot); }
+.ring.is-selected .ring-dial { outline: 1px solid var(--accent); outline-offset: 4px; }
+
+/* --- per-core rows as filter targets ---------------------------------- */
+button.core-row {
+  appearance: none;
+  background: none;
+  border: 0;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+button.core-row:hover { color: var(--text); }
+.core-row.is-dim { opacity: .35; }
+
+/* --- sensor rows: locked rows are amber and say why ------------------- */
+.stat-row.is-locked .label { color: var(--warn); }
+.warn-pill {
+  display: inline-block;
+  font-size: 11px;
+  color: var(--warn);
+  border: 1px solid rgba(227, 179, 65, .45);
+  border-radius: 999px;
+  padding: 1px 8px;
+  margin-right: 8px;
+  white-space: nowrap;
+}
+.grant {
+  appearance: none;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  color: var(--accent);
+  font: inherit;
+  font-size: 12px;
+  padding: 0 0 1px;
+  cursor: pointer;
+}
+.grant:hover { border-bottom-color: var(--accent); }
+.grant[disabled] { color: var(--muted); border-bottom-color: transparent; cursor: default; }
+.note { color: var(--muted); font-size: 11px; }
+
+/* --- cross-filter chips ----------------------------------------------- */
+/* An overlay under the topbar: a filter must never push the bento off the
+ * one-viewport grid (L1 has no document scroll to give away). */
+.chips {
+  position: fixed;
+  top: var(--shell-h);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 19;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 6px 12px;
+  background: var(--surface);
+  border: 1px solid var(--line-hover);
+  border-top: 0;
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+.chip.is-active {
+  color: var(--text);
+  border-color: var(--accent);
+  white-space: nowrap;
+}
+.chip-x, .chip-clear {
+  appearance: none;
+  background: none;
+  border: 0;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+  padding: 0 0 0 4px;
+  cursor: pointer;
+}
+.chip-x:hover, .chip-clear:hover { color: var(--text); }
+.chip-clear { padding: 2px 8px; border: 1px solid var(--border); border-radius: 999px; }
+
+/* --- legend (power: distinct line styles, one axis) ------------------- */
+.legend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: -4px 0 14px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.legend-item i {
+  display: inline-block;
+  width: 18px;
+  border-top-width: 2px;
+  border-top-color: var(--muted);
+}
+.legend-note { color: var(--muted); opacity: .8; }
+
+/* --- clickable rows (cross-filter + drill-through) -------------------- */
+tr.row-click { cursor: pointer; }
+tr.row-click:hover td { background: var(--elevated); }
+tr.row-click.is-picked td { background: var(--elevated); }
+tr.row-click.is-picked td:first-child { color: var(--accent); }
+
+/* --- slicers (analytics = the model page) ---------------------------- */
+.slicers .slicer-row {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.slicer {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.slicer select {
+  appearance: none;
+  background: var(--elevated);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font: inherit;
+  font-size: 12px;
+}
+.table.measures td:first-child { color: var(--muted); }
+
+/* --- drill-through drawer -------------------------------------------- */
+body.has-drawer { overflow: hidden; }
+.drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(9, 10, 13, .55);   /* a scrim is not a shadow: it separates layers */
+  display: flex;
+  justify-content: flex-end;
+}
+.drawer[hidden] { display: none; }
+.drawer-panel {
+  width: min(520px, 100%);
+  height: 100%;
+  overflow-y: auto;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  padding: 18px 20px 28px;
+  transform: translateX(0);
+}
+.drawer-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.drawer-head h3 {
+  margin: 2px 0 0;
+  font-size: 19px;
+  font-weight: 600;
+  word-break: break-word;
+}
+.drawer-close {
+  appearance: none;
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--muted);
+  font: inherit;
+  padding: 2px 8px;
+  cursor: pointer;
+  transition: border-color var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.drawer-close:hover { border-color: var(--line-hover); color: var(--fg); }
+.drawer-close:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+.drawer-close:hover { color: var(--text); }
+
+/* --- overview card coverage line ------------------------------------- */
+.cover { font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+/* --- consumers panel (T14C #3: who consumed the selected range) -------
+ * Fixed-height tile: header row stays put, the body scrolls. The body holds
+ * ONLY the visible window plus a small buffer (virtualised in app.js), so a
+ * 400-process list costs ~30 rows of DOM and no layout animation.
+ * The tile is 360 px tall by contract: 34 (title) + 26 (head) + 300 (scroll).
+ */
+.cons { padding: 12px 14px; }
+.cons-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.cons-filter {
+  appearance: none;
+  background: var(--elevated);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font: inherit;
+  font-size: 12px;
+  width: 170px;
+}
+.cons-filter::placeholder { color: var(--muted); }
+.cons-head {
+  display: grid;
+  gap: 8px;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 4px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface);
+}
+.cons-col {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  text-align: right;
+  font: inherit;
+  font-size: .7rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cons-col.is-name { text-align: left; }
+.cons-col:hover { color: var(--text); }
+.cons-col.is-sorted { color: var(--text); }
+.cons-col i { font-style: normal; font-size: .65rem; color: var(--accent); }
+.cons-scroll {
+  height: 266px;   /* tile totals ~360 px: 94 px of chrome + this body */
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.cons-canvas { position: relative; }
+.cons-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 30px;
+  display: grid;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  outline: none;
+}
+.cons-row:hover, .cons-row:focus-visible { background: var(--elevated); color: var(--text); }
+.cons-row .num { color: var(--text); text-align: right; }
+.cons-row .cons-name {
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cons-empty { padding: 12px 0; font-size: 12px; }
+
+/* sortable table header buttons (Apps range table) */
+.th-btn {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-size: .75rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: inherit;
+  cursor: pointer;
+}
+.th-btn.is-num { text-align: right; width: 100%; }
+.th-btn:hover { color: var(--text); }
+.th-btn i { font-style: normal; font-size: .65rem; color: var(--accent); }
+
+/* ====================================================== permissions (T15)
+ * The dot carries the state, but the state is also written in words — colour
+ * is never the only signal. Green = granted, amber = not granted, grey =
+ * not probed yet (the cheap endpoint does not run osascript).
+ */
+.tab-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--warn);
+  vertical-align: middle;
+}
+
+.perm-model {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--text);
+  max-width: 78ch;
+}
+
+.perm-list { display: flex; flex-direction: column; }
+
+.perm-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.perm-row:last-child { border-bottom: 0; }
+
+.perm-dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+.perm-dot.is-on { background: var(--ok); }
+.perm-dot.is-off { background: var(--warn); }
+.perm-dot.is-unknown { background: var(--border); }
+
+.perm-main { flex: 1 1 auto; min-width: 0; }
+.perm-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.perm-state {
+  margin-left: 8px;
+  font-weight: 400;
+  font-size: 11px;
+  letter-spacing: .02em;
+  color: var(--muted);
+}
+.perm-main .reason { max-width: 92ch; }
+
+.inline-link { color: var(--accent); text-decoration: none; border-bottom: 1px solid transparent; }
+.inline-link:hover { border-bottom-color: var(--accent); }
+
+/* ============================================ T16A the instrument (2026-11-19)
+ * One singular page: six vitals → one sticky range pill → eight sections that
+ * scroll like a health monitor. Same tokens as above: lightness for depth, one
+ * accent, tabular numerals, no shadows, no layout animation.
+ */
+
+/* --- hero band: six vitals, iStat hierarchy ---------------------------- */
+.hero-band {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--gutter);
+  margin-bottom: 4px;
+}
+@media (max-width: 1280px) { .hero-band { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 760px)  { .hero-band { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+.vital {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 12px 14px 11px;
+  min-width: 0;
+  cursor: pointer;
+  transition: background var(--dur) var(--ease);
+}
+.vital:hover, .vital:focus-visible { background: var(--elevated); outline: none; }
+
+.vital-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+/* the value big, the unit small — never one unlabelled number */
+.vital-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+}
+.vital .hero { font-size: 27px; }
+.vital .hero .unit {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+  margin-left: 3px;
+  letter-spacing: 0;
+}
+.vital .hero.is-word { font-size: 22px; }
+
+/* delta chip: always compared to a stated baseline (never bare) */
+.delta {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.delta.is-up { color: var(--warn); }
+.delta.is-down { color: var(--ok); }
+
+/* pressure dial: arc = pressure %, the word in the middle says the level */
+.dial {
+  --p: 0;
+  position: relative;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: conic-gradient(var(--accent) calc(var(--p) * 1%), var(--elevated) 0);
+}
+.dial::before {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  background: var(--surface);
+}
+.dial.is-warn { background: conic-gradient(var(--warn) calc(var(--p) * 1%), var(--elevated) 0); }
+.dial.is-hot  { background: conic-gradient(var(--hot) calc(var(--p) * 1%), var(--elevated) 0); }
+.dial b {
+  position: relative;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  color: var(--muted);
+  max-width: 36px;
+  text-align: center;
+  line-height: 1.1;
+  overflow: hidden;
+}
+
+/* two lines are allowed: a truncated unit/source is the same defect as no
+ * unit at all, so the tile wraps instead of clipping the meaning away */
+.vital-sub {
+  font-size: 12px;
+  color: var(--text);
+  margin-top: 4px;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.vital-attrib {
+  font-size: 10.5px;
+  color: var(--muted);
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.tier {
+  font-size: 10px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--warn);
+  border: 1px solid rgba(227, 179, 65, .45);
+  border-radius: 999px;
+  padding: 1px 7px;
+  white-space: nowrap;
+}
+
+/* --- the only range control: sticky, centered, 32 px targets ---------- */
+/* three columns so the PILL is centred, not the pill-plus-hint group */
+/* The pill lives inside the sticky topbar, centred in its own grid column, and
+ * is itself sticky at the top — 8 px is exactly its vertical centre in the 48 px
+ * bar, so it has no room to move and can never detach from the bar. */
+.range-pill {
+  position: sticky;
+  top: 8px;
+  justify-self: center;
+  display: flex;
+  align-items: stretch;
+  gap: 1px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px;
+  transition: border-color var(--dur) var(--ease);
+}
+.range-pill:hover { border-color: var(--line-hover); }
+.range {
+  appearance: none;
+  background: none;
+  border: 0;
+  border-radius: 999px;
+  min-height: 26px;
+  min-width: 38px;
+  padding: 5px 9px;
+  color: var(--muted);
+  font: 500 11.5px/1 var(--font);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: color var(--dur) var(--ease), background var(--dur) var(--ease);
+}
+.range:hover { color: var(--fg); background: var(--elevated); }
+.range[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--base);
+  font-weight: 600;
+}
+.range-hint {
+  font-size: 10.5px;
+  color: var(--dim);
+  white-space: nowrap;
+  transition: color var(--dur) var(--ease);
+}
+@media (max-width: 1320px) { .range-hint { display: none; } }
+.count { color: var(--muted); font-size: 11px; margin-left: 2px; }
+
+/* --- section index ---------------------------------------------------- */
+.sec-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  padding: 2px 0 12px;
+}
+.sec-nav .micro { margin-right: 6px; }
+.sec-jump {
+  appearance: none;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font: 500 11.5px/1 var(--font);
+  padding: 5px 10px;
+  cursor: pointer;
+}
+.sec-jump:hover { color: var(--text); border-color: var(--muted); }
+
+/* --- one section of the instrument ----------------------------------- */
+.sec {
+  scroll-margin-top: 108px;   /* header + sticky pill must not cover the heading */
+  margin-bottom: 26px;
+}
+.sec-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+.sec-head h2 {
+  margin: 8px 0 0;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: .01em;
+}
+.sec-head .micro { margin-top: 8px; }
+.sec-live {
+  margin-left: auto;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+.sec-live .hero { font-size: 26px; }
+.sec-live .attrib {
+  font-size: 11.5px;
+  margin-top: 0;
+  max-width: 60ch;
+}
+
+.chart-panel { padding-bottom: 10px; }
+.chart-box canvas { cursor: crosshair; }
+
+/* brush-select overlay: the span the pointer has swept */
+.brush {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+  background: rgba(94, 234, 212, .14);
+  border-left: 1px solid var(--accent);
+  border-right: 1px solid var(--accent);
+}
+.brush[hidden] { display: none; }
+
+/* --- toasts (grant flipped, range brushed) ----------------------------- */
+.toasts {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: min(420px, calc(100vw - 32px));
+  pointer-events: none;
+}
+.toast {
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 12.5px;
+  color: var(--text);
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease);
+}
+.toast.is-ok { border-color: var(--line-hover); }
+.toast.is-warn { border-color: rgba(248, 113, 113, .5); }
+.toast.is-out { opacity: 0; transform: translateY(4px); }
+
+/* --- settings drawer -------------------------------------------------- */
+.drawer.settings .drawer-panel { width: min(720px, 100%); }
+.about-grid { display: flex; flex-direction: column; }
+.about-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.about-row:last-child { border-bottom: 0; }
+.about-row .label { color: var(--muted); }
+.about-row .val { text-align: right; font-variant-numeric: tabular-nums; }
+.src-table td:first-child { color: var(--text); }
+.src-table .ok { color: var(--ok); }
+.src-table .warn { color: var(--warn); }
+
+/* --- data-source inventory (settings) --------------------------------- */
+.src-table th, .src-table td { padding-right: 16px; }
+.src-table th:last-child, .src-table td:last-child { padding-right: 0; }
+.src-table th:nth-child(2), .src-table td:nth-child(2) { width: 64px; }
+.src-table th:nth-child(3), .src-table td:nth-child(3) { width: 46%; }
+.src-table td:last-child { white-space: nowrap; }
+
+/* ===================================================================== T17A
+ * L1 · the bento instrument — one viewport, three rows, no page scroll.
+ * ======================================================================= */
+
+.bento {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  min-height: 0;
+  /* L1 is nine glanceable objects, not a wall: the panel is centred in the
+   * viewport so it reads as an instrument, and it flows from the top the
+   * moment an L2 expansion opens (justify-content flips in .is-expanded). */
+  justify-content: center;
+}
+.bento.is-expanded {
+  justify-content: flex-start;
+  height: auto;
+  min-height: 100%;
+}
+
+/* ================================================== L1 · the tile grid (T22)
+ * Nine tiles, one 3-column grid. No bars, no gauges: number + sparkline +
+ * delta + one meta line. Focus mode is a grid state, not an overlay — the
+ * clicked tile takes two columns and two rows IN the same grid and the rest of
+ * the grid reflows around it, exactly like an instrument that zooms one dial.
+ */
+.tile-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  min-height: 0;
+  flex: 0 0 auto;
+  align-content: start;
+}
+
+/* the L2 expansion slot: in flow, after the grid, so opening a module pushes
+ * the rest of L1 down instead of covering it */
+.l2-slot { flex: 0 0 auto; }
+
+.tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 120px;
+  padding: 9px 12px 8px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  cursor: pointer;
+  /* the brief's 150 ms: opacity for the dim step, the rest for the pop */
+  transition: opacity 150ms var(--ease), border-color 150ms var(--ease),
+              transform 150ms var(--ease);
+}
+.tile:hover { border-color: var(--line-hover); }
+.tile:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+
+/* ------------------------------------------------------------- focus mode
+ * .is-focused is the clicked tile: 2 columns × 2 rows, so it is ~2× its own
+ * footprint and every other tile reflows around it.
+ * .is-dimmed is everything else: 0.35 and inert. Because an inert tile cannot
+ * receive a click, "click a dimmed tile to unfocus" is wired at the grid level
+ * in app.js — any click that is not on the focused tile unfocuses.
+ */
+.tile.is-focused {
+  grid-column: span 2;
+  grid-row: span 2;
+  border-color: var(--accent);
+  cursor: default;
+  z-index: 1;
+}
+/* Thermal focuses without expanding: the tile's whole job is that all four
+ * temperatures fit at rest, so growing it would hide the point of it. */
+.tile.is-focused.tile--noexpand {
+  grid-column: auto;
+  grid-row: auto;
+}
+.bento .tile.is-dimmed,
+.tile.is-dimmed {
+  opacity: .35;
+  pointer-events: none;
+}
+/* the L2 panel dims the grid a little; never over a focus state */
+.bento.is-expanded .tile:not(.is-dimmed):not(.is-focused) { opacity: .6; }
+.bento.is-expanded .tile:hover:not(.is-dimmed) { opacity: 1; }
+
+.tile-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+.tile-head h2 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tile-num {
+  margin-left: auto;
+  font-size: 24px;              /* the brief's 24 px, tabular */
+  line-height: 1.15;
+  font-weight: 600;
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.tile-num.is-amber { color: var(--amber); }   /* battery state only */
+.tile-num.is-warn { color: var(--warn); }     /* hot CPU die only */
+.tile-num.na { color: var(--dim); font-size: 15px; font-weight: 500; }
+.tile-unit {
+  font-size: 10.5px;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+.tile-spark {
+  display: block;
+  width: 100%;
+  height: 40px;                 /* the brief's 40 px sparkline */
+  flex: 0 0 auto;
+  margin: 6px 0 1px;
+}
+.tile-delta {
+  display: block;
+  font-size: 10px;              /* the brief's 10 px delta */
+  line-height: 1.35;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-height: 13px;
+  flex: 0 0 auto;
+}
+.tile-meta {
+  margin: 0;
+  font-size: 10.5px;
+  letter-spacing: .01em;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 0 0 auto;
+}
+
+/* ------------------------------------------- thermal tile: four temperatures
+ * Compact on purpose: label left, °C right, tabular, one line each. This is the
+ * only place at L1 where a list is allowed, because "all temps in one tile" is
+ * the tile's whole specification.
+ */
+.temp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: 3px;
+  flex: 0 0 auto;
+}
+.temp-list .tl-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+.temp-list .tl-k {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.temp-list .tl-v { flex: 0 0 auto; color: var(--muted); }
+
+/* ------------------------------------------------ focus body: chart + stats
+ * The focused tile swaps its sparkline for the real thing: a horizontally
+ * scrollable chart (drag to zoom) beside the module's stats. Side column is
+ * fixed so the chart never becomes a sliver; the whole body is a flex row.
+ */
+.tile-focus {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: 6px;
+}
+.tile.is-focused:not(.tile--noexpand) .tile-spark,
+.tile.is-focused:not(.tile--noexpand) .tile-delta,
+.tile.is-focused:not(.tile--noexpand) .tile-meta { display: none; }
+.tf-chart {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.tf-chart .chart-scroll { flex: 1 1 auto; min-height: 120px; }
+.tf-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+.tf-head .micro {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tf-btn {
+  appearance: none;
+  margin-left: auto;
+  flex: 0 0 auto;
+  padding: 1px 7px;
+  font-size: 10px;
+  font-family: inherit;
+  letter-spacing: .02em;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  cursor: pointer;
+}
+.tf-btn:hover { color: var(--fg); border-color: var(--line-hover); }
+.tf-side {
+  flex: 0 0 216px;
+  max-width: 216px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  padding-left: 12px;
+  border-left: 1px solid var(--line);
+}
+.tf-side::-webkit-scrollbar { width: 6px; }
+.tf-side::-webkit-scrollbar-thumb { background: var(--line-hover); border-radius: 3px; }
+.tf-side .micro { display: block; margin-bottom: 4px; }
+/* per-core rows: core · util · clock/residency. Text, never a bar. */
+.tf-core {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 10.5px;
+  line-height: 1.7;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.tf-core .k { flex: 0 0 44px; color: var(--fg); white-space: nowrap; }
+.tf-core .v { flex: 1 1 auto; text-align: right; }
+.tf-core .v.dim { color: var(--dim); }
+.tf-core.tf-core-head {
+  margin-top: 6px;
+  color: var(--dim);
+  border-top: 1px solid var(--line);
+  padding-top: 4px;
+}
+.tf-core.tf-core-head .k { color: var(--dim); letter-spacing: .04em; }
+.tf-note {
+  margin: 6px 0 0;
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--dim);
+}
+.tf-src { margin-top: 8px; font-size: 10px; color: var(--dim); line-height: 1.4; }
+
+/* --------------------------------------------------------- customize mode
+ * Off by default: no handle, no checkbox, nothing extra on the tile. On, the
+ * tile gains a grip (top-left) and a visibility checkbox (top-right), and
+ * clicks stop focusing so a drag can never open anything.
+ */
+.tile-grip, .tile-pick { display: none; }
+.tile-grid.is-editing .tile { cursor: default; padding-top: 20px; }
+.tile-grid.is-editing .tile-grip {
+  display: block;
+  position: absolute;
+  top: 5px;
+  left: 8px;
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: 1px;
+  color: var(--muted);
+  cursor: grab;
+  user-select: none;
+}
+.tile-grid.is-editing .tile-grip:active { cursor: grabbing; }
+.tile-grid.is-editing .tile-pick {
+  display: flex;
+  position: absolute;
+  top: 2px;
+  right: 6px;
+  align-items: center;
+}
+.tile-grid.is-editing .tile-pick input { accent-color: var(--accent); margin: 0; cursor: pointer; }
+.tile-grid.is-editing .tile:hover { border-color: var(--line-hover); }
+.tile.is-dragging { opacity: .35; }
+.tile.is-drop-target { border-color: var(--accent); }
+.tile[hidden] { display: none !important; }
+
+/* the settings row that turns the mode on: one line, no chrome */
+.tile-custom {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.tile-custom label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.tile-custom input[type="checkbox"] { accent-color: var(--accent); margin: 0; }
+.tile-custom .grant { margin-left: auto; }
+
+.micro {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--muted);
+}
+.tile .micro {
+  font-size: 10.5px;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--dim);
+}
+
+/* coverage line: 11 px dim, the measured share bolded */
+.cov {
+  margin: 5px 0 0;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 0 0 auto;
+}
+.cov b { color: var(--muted); font-weight: 600; }
+
+/* the horizontally scrollable chart box — 6 px thumb, min-width 720 */
+.chart-scroll {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin-top: 4px;
+}
+.chart-scroll::-webkit-scrollbar { height: 6px; }
+.chart-scroll::-webkit-scrollbar-thumb { background: var(--line-hover); border-radius: 3px; }
+.chart-inner {
+  position: relative;
+  min-width: 720px;
+  width: 100%;
+  height: 100%;
+}
+.chart-inner canvas {
+  position: absolute;
+  inset: 0;
+  cursor: crosshair;
+}
+.tile .chart-scroll { margin-bottom: 0; }
+
+/* ------------------------------------------- row 2 right: rings + consumers */
+.pe-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+.pe {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  flex: 1 1 0;
+  min-width: 0;
+}
+.pe-dial {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  position: relative;
+  display: grid;
+  place-items: center;
+  background: conic-gradient(var(--accent) calc(var(--p) * 1%), var(--line) 0);
+}
+.pe-dial::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: var(--surface);
+}
+.pe-dial span {
+  position: relative;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+.pe-dial.is-warn { background: conic-gradient(var(--warn) calc(var(--p) * 1%), var(--line) 0); }
+.pe-label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.pe-sub { font-size: 10px; color: var(--dim); white-space: nowrap; }
+
+.mini-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 8px 0 3px;
+  flex: 0 0 auto;
+}
+
+.core-strip {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px 12px;
+  flex: 0 0 auto;
+}
+.core-mini {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) 46px;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--muted);
+  font: 500 11px/1.6 var(--font);
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  cursor: pointer;
+  transition: color var(--dur) var(--ease), opacity var(--dur) var(--ease);
+}
+.core-mini:hover { color: var(--fg); }
+.core-mini .cbar {
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--elevated);
+  overflow: hidden;
+}
+.core-mini .cbar > i {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: var(--accent);
+  /* scaleX, never width: layout animation is forbidden, transform is not */
+  transform: scaleX(calc(var(--w, 0) / 100));
+  transform-origin: left center;
+  transition: transform var(--dur) var(--ease);
+}
+.core-mini .cbar > i.is-warn { background: var(--warn); }
+.core-mini .cval {
+  text-align: right;
+  color: var(--fg);
+  font-size: 10.5px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.topcons {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  flex: 0 1 auto;   /* the list sizes to its rows; the gap sits below it */
+}
+.tc-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 46px 40px;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 3px 0;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--fg);
+  font: 400 12px/1.5 var(--font);
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  cursor: pointer;
+  transition: color var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+.tc-row:hover { border-bottom-color: var(--line-hover); }
+.tc-row .tc-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tc-row .tc-share { text-align: right; color: var(--fg); font-size: 11.5px; }
+.tc-row .tc-cpu { text-align: right; color: var(--dim); font-size: 11px; }
+
+.drill-btn {
+  margin-top: auto;   /* pinned to the bottom of the side tile */
+  align-self: flex-start;
+  margin-bottom: 2px;
+  appearance: none;
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px 10px;
+  color: var(--accent);
+  font: 500 11px/1.4 var(--font);
+  cursor: pointer;
+  flex: 0 0 auto;
+  transition: border-color var(--dur) var(--ease), opacity var(--dur) var(--ease);
+}
+.drill-btn:hover { border-color: var(--line-hover); }
+
+/* -------------------------------------------------------- the L2 expansion
+ * NOT a drawer, NOT a slide-over. It is a row inside the bento that opens in
+ * flow: the chart scrolls horizontally (min-width 720, 6 px thumb), the side
+ * column carries measures + top consumers, and the whole thing pushes L1 down.
+ * ======================================================================= */
+.l2-inline {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px 12px 12px;
+  animation: l2-in 160ms var(--ease);
+}
+@keyframes l2-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+.l2i-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 9px;
+}
+.l2i-head h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fg);
+}
+.l2i-kind {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--dim);
+}
+.l2i-head .l2i-live {
+  font-size: 10.5px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.l2i-actions { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+.l2i-btn {
+  appearance: none;
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm, 4px);
+  color: var(--muted);
+  font: 500 10.5px/1.6 var(--font);
+  padding: 1px 8px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.l2i-btn:hover { color: var(--text); border-color: var(--line-hover); }
+.l2i-btn[aria-expanded="true"] {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.l2i-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 3fr);
+  gap: 12px;
+  align-items: start;
+}
+.l2i-chart { min-width: 0; }
+.l2-inline .chart-scroll {
+  height: 200px;
+  min-height: 200px;
+  flex: 0 0 auto;
+  overflow-x: auto;
+  margin-top: 0;
+}
+.l2i-side {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 0;
+}
+/* 18 SMC sensors is the real list, not a sample of it — it scrolls instead of
+ * stretching the whole expansion past the viewport */
+#l2-sensors { max-height: 430px; overflow-y: auto; }
+#l2-sensors::-webkit-scrollbar { width: 6px; }
+#l2-sensors::-webkit-scrollbar-thumb { background: var(--line-hover); border-radius: 3px; }
+.l2i-side .micro { display: block; margin-bottom: 5px; }
+.l2i-cons { display: flex; flex-direction: column; }
+.l2i-cons-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 2px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 11.5px;
+  background: none;
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
+  text-align: left;
+  color: var(--fg);
+  font-family: inherit;
+  cursor: pointer;
+  min-width: 0;
+}
+.l2i-cons-row:last-child { border-bottom: 0; }
+.l2i-cons-row:hover .l2i-cons-name { color: var(--accent); }
+.l2i-cons-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+}
+.l2i-cons-share {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --------------------------------------------------------- L3 · deep detail
+ * Inside L2, collapsed by default. Most sessions never open it. */
+.l3 {
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.l3-col { min-width: 0; }
+.l3-col > .micro { display: block; margin-bottom: 5px; }
+.l3-findings p {
+  margin: 0 0 5px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--fg);
+}
+.l3-findings p:last-child { margin-bottom: 0; }
+.l3-findings b { font-weight: 600; }
+.l3-record {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 8px;
+  padding: 2px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.l3-record:last-child { border-bottom: 0; }
+.l3-record .ts { color: var(--dim); font-variant-numeric: tabular-nums; }
+.l3-cores {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(74px, 1fr));
+  gap: 4px;
+}
+.l3-core {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.l3-bar {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 18px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--elevated);
+  overflow: hidden;
+}
+.l3-bar > i {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+}
+.l3-bar > i.is-warn { background: var(--warn); }
+.l3-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+.l3-table th {
+  text-align: left;
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--dim);
+  font-weight: 500;
+  padding: 0 8px 3px 0;
+  border-bottom: 1px solid var(--line);
+}
+.l3-table td {
+  padding: 2px 8px 2px 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.l3-table td:last-child, .l3-table th:last-child { text-align: right; padding-right: 0; }
+.l3-table tr:last-child td { border-bottom: 0; }
+
+/* ------------------------------------------------------- hover-to-reveal tip
+ * 30 px mini chart of the last 60 s + the source line. Positioned below the
+ * chip, fixed so it can never be clipped by a scroll box, and inert. */
+.hover-tip {
+  position: fixed;
+  z-index: 60;
+  width: 208px;
+  padding: 5px 7px 4px;
+  background: var(--elevated);
+  border: 1px solid var(--line-hover);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .45);
+  pointer-events: none;
+}
+.hover-tip canvas {
+  display: block;
+  width: 100%;
+  height: 30px;
+}
+.hover-src {
+  margin-top: 3px;
+  font-size: 10px;
+  line-height: 1.3;
+  color: var(--dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ============================================================ L2 · the drawer
+ * A right-side slide-over (transform 200 ms). Overlay, not a route: the hash
+ * stays #instrument while it is open.
+ * ======================================================================= */
+.l2 {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+.l2-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 7, 9, .58);
+  opacity: 0;
+  transition: opacity 200ms var(--ease);
+}
+.l2-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: min(780px, 100%);
+  display: flex;
+  flex-direction: column;
+  background: var(--base);
+  border-left: 1px solid var(--line);
+  transform: translateX(100%);
+  transition: transform 200ms var(--ease);
+}
+.l2.is-open .l2-backdrop { opacity: 1; }
+.l2.is-open .l2-panel { transform: translateX(0); }
+
+.l2-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid var(--line);
+  flex: 0 0 auto;
+}
+.l2-head h3 {
+  margin: 2px 0 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--fg);
+}
+.l2-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 16px 28px;
+}
+.l2-block {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+}
+.l2-block > .micro { margin-bottom: 6px; display: block; }
+.l2 .chart-scroll { height: 210px; flex: 0 0 auto; min-height: 210px; }
+.l2-findings p {
+  margin: 0 0 5px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--fg);
+}
+.l2-findings p:last-child { margin-bottom: 0; }
+.l2-findings b { font-weight: 600; }
+.l2-records { display: flex; flex-direction: column; }
+.l2-record {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 8px;
+  padding: 2px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.l2-record:last-child { border-bottom: 0; }
+.l2-record .ts { color: var(--dim); font-variant-numeric: tabular-nums; }
+.l2 .cons { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.l2 .cons-scroll { max-height: 240px; }
+.l2 .chart-foot { margin-top: 6px; }
+.l2 .reason { font-size: 11px; color: var(--dim); }
+.l2 .stat-row { font-size: 12px; }
+
+/* logs live inside the settings drawer now — L1 has no room to give away */
+#logs {
+  flex: 0 0 auto;
+  border-top: 1px solid var(--line);
+  padding: 8px 16px 12px;
+  font-size: 11px;
+  color: var(--muted);
+}
+#logs summary { cursor: pointer; color: var(--muted); }
+#logs #logLines { max-height: 160px; overflow: auto; font-size: 11px; color: var(--dim); }
+#logs #logLines br { line-height: 1.6; }
+
+/* ------------------------------------------------ smaller viewports: scroll */
+@media (max-width: 1180px) {
+  .stage { overflow-y: auto; }
+  .bento { height: auto; }
+  .tile-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* at two columns a 2 × 2 focus tile would cover the whole grid, so it takes
+   * the full width and one row instead — still ~2× its own footprint */
+  .tile.is-focused { grid-column: span 2; grid-row: span 1; }
+  .tile-focus { flex-direction: column; }
+  .tf-side {
+    flex: 0 0 auto;
+    max-width: none;
+    max-height: 160px;
+    padding-left: 0;
+    padding-top: 6px;
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+  .l2i-grid { grid-template-columns: 1fr; }
+  .l3 { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 760px) {
+  .tile-grid { grid-template-columns: minmax(0, 1fr); }
+  .tile.is-focused { grid-column: auto; grid-row: auto; }
+}
+
+
+/* the window's own measures, bottom of the side tile */
+.measures-mini {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+}
+.mm-row {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr);
+  gap: 8px;
+  padding: 2px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 11.5px;
+}
+.mm-row:last-child { border-bottom: 0; }
+.mm-k { color: var(--dim); text-transform: uppercase; font-size: 10px; letter-spacing: .06em; }
+.mm-v { color: var(--fg); font-variant-numeric: tabular-nums; }
+
+/* ======================================================= T17B · Apps (app cut)
+ * Same grammar as the consumers panel — a virtualised grid of rows, sticky
+ * header, hairlines — with two extras: a 34 px row (tall enough for a
+ * sparkline) and a shape column. Still: one accent, no shadows, tabular.
+ */
+.apps-panel { padding-bottom: 12px; }
+.apps-head { gap: 10px; }
+.apps-scroll {
+  height: min(62vh, 640px);
+  min-height: 320px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+}
+.app-row { height: 34px; gap: 10px; }
+.app-row .num { color: var(--fg); }
+.app-spark {
+  width: 96px;
+  height: 22px;
+  display: block;
+  align-self: center;
+}
+.app-shape-h { color: var(--dim); }
+.app-row .count { color: var(--dim); font-size: 10px; }
+
+/* ------------------------------------------- the app's own drawer (L2 · app) */
+.app-series { display: flex; flex-direction: column; gap: 2px; }
+.app-series-row {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 11.5px;
+}
+.app-series-row:last-child { border-bottom: 0; }
+.app-series-label {
+  color: var(--dim);
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: .06em;
+}
+.app-series-spark { width: 100%; height: 22px; display: block; }
+.app-series-num { color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+.app-links { display: flex; gap: 8px; flex-wrap: wrap; }
+.app-link {
+  appearance: none;
+  background: var(--elevated);
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+  transition: border-color var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.app-link:hover { border-color: var(--line-hover); color: var(--fg); }
+
+/* ================================================== T17B · Knowledge (manual)
+ * A card per metric: name · what · formula · source · cadence · gap · link.
+ */
+.know-intro p { margin: 0 0 10px; color: var(--muted); font-size: 13px; max-width: 92ch; }
+.know-nav-row { display: flex; gap: 6px; flex-wrap: wrap; }
+/* T20: the manual lives in ⚙ settings now, so each group is a <details> that is
+ * closed until asked — reference material should not push permissions down. */
+details.know-sec { margin: 8px 0 0; }
+details.know-sec > summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  padding: 3px 0;
+  border-bottom: 1px solid var(--line);
+}
+details.know-sec > summary .note { font-weight: 400; margin-left: 6px; }
+details.know-sec[open] > summary { border-bottom-color: var(--line-hover); }
+details.know-sec .know-grid { margin-top: 8px; }
+.know-nav {
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 11px;
+  text-decoration: none;
+  transition: border-color var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.know-nav:hover { border-color: var(--line-hover); color: var(--fg); }
+.know-sec { margin-bottom: 18px; scroll-margin-top: calc(var(--shell-h) + 8px); }
+.know-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: var(--gutter);
+}
+.know-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 13px 15px 12px;
+  border: 1px solid transparent;
+  transition: border-color var(--dur) var(--ease);
+}
+.know-card:hover { border-color: var(--line-hover); }
+.know-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.know-head h3 {
+  margin: 0 0 6px;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: .01em;
+  color: var(--fg);
+}
+.know-open {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-size: 11px;
+  color: var(--dim);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--dur) var(--ease);
+}
+.know-open:hover { color: var(--accent); }
+.know-what { margin: 0 0 10px; color: var(--muted); font-size: 12.5px; }
+.know-rows { display: flex; flex-direction: column; }
+.know-row {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 10px;
+  padding: 5px 0;
+  border-top: 1px solid var(--line);
+  font-size: 11.5px;
+}
+.know-k {
+  color: var(--dim);
+  text-transform: uppercase;
+  font-size: 9.5px;
+  letter-spacing: .06em;
+  padding-top: 1px;
+}
+.know-v { color: var(--fg); }
+
+/* ============================================ T17B · Power & battery (analytics)
+ * One accent, ramp on opacity. No second hue: "other" is a grey step.
+ */
+.pb-hero { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; margin: 2px 0 10px; }
+.pb-num { font-size: 30px; line-height: 1.1; color: var(--fg); font-variant-numeric: tabular-nums; }
+.pb-unit { font-size: 13px; color: var(--muted); }
+.pb-rail { font-size: 11px; color: var(--dim); margin-left: 6px; }
+.pb-bar {
+  display: flex;
+  width: 100%;
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: var(--elevated);
+  margin-bottom: 10px;
+}
+.pb-seg { display: block; height: 100%; }
+.pb-seg-0 { background: rgba(94, 234, 212, 0.95); }
+.pb-seg-1 { background: rgba(94, 234, 212, 0.76); }
+.pb-seg-2 { background: rgba(94, 234, 212, 0.58); }
+.pb-seg-3 { background: rgba(94, 234, 212, 0.42); }
+.pb-seg-4 { background: rgba(94, 234, 212, 0.28); }
+.pb-seg-other { background: var(--line-hover); }
+.pb-legend { display: flex; flex-direction: column; margin-bottom: 4px; }
+.pb-leg {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+}
+.pb-leg:last-of-type { border-bottom: 0; }
+.pb-dot { width: 8px; height: 8px; border-radius: 2px; display: block; }
+.pb-dot-0 { background: rgba(94, 234, 212, 0.95); }
+.pb-dot-1 { background: rgba(94, 234, 212, 0.76); }
+.pb-dot-2 { background: rgba(94, 234, 212, 0.58); }
+.pb-dot-3 { background: rgba(94, 234, 212, 0.42); }
+.pb-dot-4 { background: rgba(94, 234, 212, 0.28); }
+.pb-dot-other { background: var(--line-hover); }
+.pb-leg-name { color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pb-leg-num { color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+.pb-cost {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid var(--line);
+  font-size: 12.5px;
+}
+.pb-cost .label { color: var(--dim); text-transform: uppercase; font-size: 10px; letter-spacing: .06em; }
+.pb-cost .val { color: var(--fg); font-variant-numeric: tabular-nums; }
+.pb-cost .note { color: var(--dim); font-size: 11px; }
+.pb-rails td.note { color: var(--dim); font-size: 11.5px; }
+.pb-rails td { font-size: 12px; }
+.pb-rails th:first-child, .pb-rails td:first-child { padding-right: 16px; }
+.pb-rails th:nth-child(2), .pb-rails td:nth-child(2) { padding-right: 20px; }
+.pb-rails td.note { padding-left: 2px; }
+
+/* settings: the one field a user types (tariff) */
+.tariff-row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 6px; }
+.tariff-row .slicer { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--dim); }
+.tariff-row .cons-filter { width: 150px; }
+
+/* an app row that is the current cross-filter: the chip in the shell and the
+ * row on screen must say the same thing (accent on the name only) */
+.app-row.is-picked .cons-name { color: var(--accent); }
+.app-row.is-picked { background: rgba(94, 234, 212, 0.04); }
+
+/* hidden must beat a display rule: the L2/L3/tooltip blocks all set `display`,
+ * and an author rule otherwise wins over the UA's [hidden] sheet. */
+.l3[hidden], .l2-slot[hidden], .hover-tip[hidden] { display: none !important; }

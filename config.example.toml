@@ -10,6 +10,14 @@ temperature = false   # show CPU temp sensor when available
 color      = true
 retention_days = 30   # days to keep --log JSONL files
 
+# T20 — the privileged powermetrics daemon's cadence.
+# powermetrics is the most expensive probe in the product (a subprocess that
+# samples the machine's own counters): at 5 s it spiked 12×/min, at 15 s it is
+# 4×/min and the whole agent sits at ~1.5–2 % CPU. The daemon's
+# `--interval-ms` and the dashboard's power/temperature ring use this value.
+[powermetrics]
+interval_ms = 15000
+
 [panels]
 cpu  = true
 ram  = true

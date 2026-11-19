@@ -62,16 +62,23 @@ mod imp {
         if cfg.interval_ms == 0 {
             cfg.interval_ms = 1000;
         }
-        crate::logging::prune(cfg.retention_days);
+        if cfg.storage.cascade {
+            if let Some(dir) = crate::logging::log_dir() {
+                let _ = crate::storage::init(&dir, &cfg.storage);
+            }
+        } else {
+            crate::logging::prune(cfg.retention_days);
+        }
 
         let mut collector = crate::stats::Collector::new(cfg.top_n);
         collector.print_startup_self_test();
         while !SERVICE_STOPPED.load(Ordering::SeqCst) {
             collector.refresh();
             let snap = collector.snapshot(cfg.temp);
-            crate::logging::append(&snap);
+            crate::logging::write(&snap, cfg.storage.cascade);
             std::thread::sleep(Duration::from_millis(cfg.interval_ms));
         }
+        crate::storage::flush_hot();
 
         handler.set_service_status(ServiceStatus {
             service_type: SERVICE_TYPE,

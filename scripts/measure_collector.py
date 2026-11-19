@@ -536,7 +536,9 @@ def build_parser():
             "  %(prog)s --name syswatch.exe --all --duration 30 --out a.csv\n"
         ),
     )
-    ap.add_argument("--duration", type=float, default=60.0,
+    # `--seconds` is an alias for `--duration` (the T7B acceptance command
+    # uses it); argparse keeps `duration` as the dest either way.
+    ap.add_argument("--duration", "--seconds", type=float, default=60.0,
                     help="seconds to sample (default 60)")
     ap.add_argument("--interval", type=float, default=1.0,
                     help="seconds between samples (default 1)")

@@ -1,0 +1,349 @@
+{
+  "generated_ist": "2026-11-15T15:28:55+05:30",
+  "source_db": "/Users/barbarian/Library/Application Support/iStat Menus 7/history/history.db",
+  "source_schema_version": "iStat Menus 7",
+  "tables": {
+    "cpu": {
+      "rows": 2264,
+      "file": "cpu.jsonl",
+      "columns": [
+        "time",
+        "interval",
+        "user",
+        "system"
+      ],
+      "units": "percent of total machine capacity (0-100 x all cores)",
+      "first_ist": "2026-11-08T15:42:00+05:30",
+      "last_ist": "2026-11-15T15:24:00+05:30",
+      "intervals": {
+        "5": 357,
+        "30": 362,
+        "90": 273,
+        "180": 215,
+        "360": 246,
+        "720": 323,
+        "2160": 280,
+        "5040": 120,
+        "10080": 60,
+        "21600": 28
+      }
+    },
+    "load": {
+      "rows": 2264,
+      "file": "load.jsonl",
+      "columns": [
+        "time",
+        "interval",
+        "one",
+        "five",
+        "fifteen"
+      ],
+      "units": "load average",
+      "first_ist": "2026-11-08T15:42:00+05:30",
+      "last_ist": "2026-11-15T15:24:00+05:30",
+      "intervals": {
+        "5": 357,
+        "30": 362,
+        "90": 273,
+        "180": 215,
+        "360": 246,
+        "720": 323,
+        "2160": 280,
+        "5040": 120,
+        "10080": 60,
+        "21600": 28
+      }
+    },
+    "memory": {
+      "rows": 2264,
+      "file": "memory.jsonl",
+      "columns": [
+        "time",
+        "interval",
+        "pressure",
+        "wired",
+        "app",
+        "compressed",
+        "total"
+      ],
+      "units": "MB (total = installed RAM in MB); pressure = percent",
+      "first_ist": "2026-11-08T15:42:00+05:30",
+      "last_ist": "2026-11-15T15:24:00+05:30",
+      "intervals": {
+        "5": 357,
+        "30": 362,
+        "90": 273,
+        "180": 215,
+        "360": 246,
+        "720": 323,
+        "2160": 280,
+        "5040": 120,
+        "10080": 60,
+        "21600": 28
+      }
+    },
+    "swap": {
+      "rows": 112312,
+      "file": "swap.jsonl",
+      "columns": [
+        "time",
+        "interval",
+        "swap"
+      ],
+      "units": "GB used",
+      "first_ist": "2026-11-08T15:28:55+05:30",
+      "last_ist": "2026-11-15T15:24:00+05:30",
+      "intervals": {
+        "5": 87570,
+        "30": 14776,
+        "90": 4952,
+        "180": 2497,
+        "360": 1275,
+        "720": 754,
+        "2160": 280,
+        "5040": 120,
+        "10080": 60,
+        "21600": 28
+      }
+    },
+    "gpu": {
+      "rows": 2264,
+      "file": "gpu.jsonl",
+      "columns": [
+        "time",
+        "interval",
+        "key",
+        "processor",
+        "memory"
+      ],
+      "units": "percent",
+      "first_ist": "2026-11-08T15:42:00+05:30",
+      "last_ist": "2026-11-15T15:24:00+05:30",
+      "intervals": {
+        "5": 357,
+        "30": 362,
+        "90": 273,
+        "180": 215,
+        "360": 246,
+        "720": 323,
+        "2160": 280,
+        "5040": 120,
+        "10080": 60,
+        "21600": 28
+      }
+    },
+    "network": {
+      "rows": 44862,
+      "file": "network.jsonl",
+      "columns": [
+        "time",
+        "interval",
+        "key",
+        "upload",
+        "download",
+        "uploadpeak",
+        "downloadpeak"
+      ],
+      "units": "MB/s",
+      "first_ist": "2026-11-08T15:42:00+05:30",
+      "last_ist": "2026-11-15T15:24:00+05:30",
+      "intervals": {
+        "5": 7140,
+        "30": 7240,
+        "90": 5460,
+        "180": 4300,
+        "360": 4920,
+        "720": 6460,
+        "2160": 5361,
+        "5040": 2297,
+        "10080": 1149,
+        "21600": 535
+      }
+    },
+    "diskactivity": {
+      "rows": 2264,
+      "file": "diskactivity.jsonl",
+      "columns": [
+        "time",
+        "interval",
+        "key",
+        "read",
+        "write",
+        "readpeak",
+        "writepeak"
+      ],
+      "units": "KB/s",
+      "first_ist": "2026-11-08T15:42:00+05:30",
+      "last_ist": "2026-11-15T15:24:00+05:30",
+      "intervals": {
+        "5": 357,
+        "30": 362,
+        "90": 273,
+        "180": 215,
+        "360": 246,
+        "720": 323,
+        "2160": 280,
+        "5040": 120,
+        "10080": 60,
+        "21600": 28
+      }
+    },
+    "battery": {
+      "rows": 3212,
+      "file": "battery.jsonl",
+      "columns": [
+        "time",
+        "interval",
+        "key",
+        "percentage",
+        "source"
+      ],
+      "units": "percent; source 1.0 = on AC power",
+      "first_ist": "2026-11-08T15:45:00+05:30",
+      "last_ist": "2026-11-15T15:24:00+05:30",
+      "intervals": {
+        "5": 357,
+        "30": 362,
+        "37": 362,
+        "90": 273,
+        "112": 222,
+        "180": 215,
+        "225": 234,
+        "360": 246,
+        "450": 261,
+        "900": 360,
+        "2700": 224,
+        "6300": 96
+      }
+    },
+    "sensors": {
+      "rows": 74712,
+      "file": "sensors.jsonl",
+      "columns": [
+        "time",
+        "interval",
+        "key",
+        "value",
+        "peak"
+      ],
+      "units": "raw SMC/IOHID value; key is an md5 with no name stored in the DB",
+      "first_ist": "2026-11-08T15:42:00+05:30",
+      "last_ist": "2026-11-15T15:24:00+05:30",
+      "intervals": {
+        "5": 11781,
+        "30": 11946,
+        "90": 9009,
+        "180": 7095,
+        "360": 8118,
+        "720": 10659,
+        "2160": 9240,
+        "5040": 3960,
+        "10080": 1980,
+        "21600": 924
+      }
+    }
+  },
+  "sample": {
+    "rows": 267,
+    "file": "sample.jsonl",
+    "interval": 90,
+    "first_ist": "2026-11-15T08:13:30+05:30",
+    "last_ist": "2026-11-15T15:19:30+05:30"
+  },
+  "maps": {
+    "sensors": {
+      "map_table": "sensorsmap",
+      "key_count": 33,
+      "keys": [
+        "24753b1c54d8df23721bbcf2d338c34f",
+        "37ca8fd20fa1a6ca0f04049a2e1a759e",
+        "1400154c5564e734151b279aa8b720a5",
+        "5e68cba497005ece6d647f92b62c5412",
+        "e7a18c656fb6b7fa6228bcf1eb5ea2e9",
+        "8b6a43109f5a848cb2d0b754fc8b7ebc",
+        "b81b51c0d9ac8b3c2e5fd7352ba371d9",
+        "aed8b6673f0ba0c20742ae9af9187b58",
+        "42dee1f32dc946682545a4678be92573",
+        "4bbe4c56e2d9c0a5fa8b3975cbb60bb8",
+        "4857ecbb391ed06af733406406fb7408",
+        "dbe68714e6b078792f9932eb8df5658d",
+        "aa17d2bb4a238a0628c3635a07210d35",
+        "02325c51139372e9de38d5d2c02e3634",
+        "4c4cfe5330467df98e7176153b6210fb",
+        "fa6410ccf52a4d750cc297d2604b1424",
+        "faddb30cd4e30891aedd066e3bbb35d2",
+        "84d15cb06320eb5816740a205254d90f",
+        "57e79d7a2c9783f52a453d0ba3cd4c07",
+        "70ff67bad4aba578fdfde5a89e0e730d",
+        "44644174d0ec23ac2d79422480fba225",
+        "1a18e1dbc7eaa334c9c4a5107cd865a6",
+        "da1bdfc1c01c28931d430bfb18ca3a9e",
+        "2a6dff0bcebdc433c9499ccd046d10aa",
+        "91be731a212a55040ab6a711c73f9ba4",
+        "026d71d7ade3b794b2edc4521f9484d1",
+        "81285fe8c0acaddfbfc63cdbb4d61c3f",
+        "f6c140b2f2e3b3801e5771e7852f7329",
+        "c71c98ae31eec17864fb6c1196fc548f",
+        "6c2ac9cb7be6e38be27d6e8052573deb",
+        "88d25678f9e09f95b828243d04ce626f",
+        "eda5736c2f0ae64a7a4700c4f9f02e95",
+        "11ee575ccbba262f006f1d53b33713bd"
+      ]
+    },
+    "network": {
+      "map_table": "networkmap",
+      "key_count": 28,
+      "keys": [
+        "87b30579288da093de92f81b638c7b2c",
+        "de9af970ba6a39d22f6f6f24e2d61f95",
+        "333980c785719dee44f9ac62e668c949",
+        "9c0f20a6dc5f2ad470700b87707355f4",
+        "75b99d07a277648711a16510a6823093",
+        "e6e02126caf155616a3a127500ad05fe",
+        "6c9164298ea05828fefea070774f5647",
+        "d87afda285dddc3fef93f3f9b9121368",
+        "e6829c93db1848cd7dc8cc6434f20684",
+        "7238ed2fd6f2c6c269dd20860a73a2c7",
+        "bf981ad13efdaaf578db72b104d0fd23",
+        "194bb341f4f4cd4f93d1c4bdf9de8b11",
+        "0043fecaaedd5d5088c1095c5bce68b0",
+        "55adbeb5af40f5a58d24d80eee943b90",
+        "1b90a1e1c82f12c70c17f1b02d207d49",
+        "c929be5e40c9a638e4c66d0ce79f721e",
+        "42cf29095e942d4329cb21c1e326fdc9",
+        "7668e430a13527d86b440581412da90b",
+        "f49d92a2e11a4f02e2a132a08db3f1f5",
+        "b2c229e30e1e233a59656088a4c17cb2",
+        "e0489002328afdc1b0d623457edeb1c7",
+        "a42eccd23fadcafc88c69795e919331b",
+        "8fcc8a875f5e96ad088a0c3c5c4bf45d",
+        "dd4f4a4cd5c672cd622f5eda2e5b0c6f",
+        "96c80261fdbd9bb6b2b759a20ed19996",
+        "28f66b0cbd7acd8e0fc8c69e347bf99a",
+        "3beb34b3f6cd51c3d160cbdc8650495b",
+        "63848b68b1c27846daf3711d9dcea6ce"
+      ]
+    },
+    "gpu": {
+      "map_table": "gpumap",
+      "key_count": 1,
+      "keys": [
+        "832eb10eb78ee9ad787bbb99a9195840"
+      ]
+    },
+    "diskactivity": {
+      "map_table": "diskactivitymap",
+      "key_count": 1,
+      "keys": [
+        "b3f60f45d76abda8fe429301cdf063d9"
+      ]
+    },
+    "battery": {
+      "map_table": "batterymap",
+      "key_count": 1,
+      "keys": [
+        "abe079e75991ab81dc5db82001336493"
+      ]
+    }
+  }
+}

@@ -2,12 +2,13 @@
 
 Run:  python dashboard/test_b11.py
 
-These tests are pure-stdlib + psutil (already a server.py dep). They do NOT
-start the dashboard server, do NOT touch C:\\ProgramData, and do NOT touch
-the live :8123 port. They import server.py in-process.
+These tests are stdlib-only (no psutil). They do NOT start the dashboard
+server, do NOT touch C:\\ProgramData, and do NOT touch the live :8123 port.
+They import server.py in-process.
 """
 import json
 import os
+import resource
 import sys
 import tempfile
 import time
@@ -32,23 +33,56 @@ def check(name, cond, detail=""):
         print("  FAIL  %s  -- %s" % (name, detail))
 
 
+def _pid_exists(pid):
+    """Stdlib substitute for psutil.pid_exists."""
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except OSError as e:
+        # EPERM means a process with that pid exists but we can't signal it.
+        return e.errno == 1
+    except OverflowError:
+        return False
+    return True
+
+
+def _rss_bytes():
+    """Current RSS in bytes.  Uses a macOS task_info call when available,
+    otherwise falls back to getrusage (which reports the *maximum* RSS and
+    is therefore less accurate for incremental delta checks)."""
+    if sys.platform == "darwin":
+        try:
+            import ctypes
+            libc = ctypes.CDLL("libc.dylib")
+            libc.mach_task_self.restype = ctypes.c_uint
+            task = libc.mach_task_self()
+            TASK_BASIC_INFO = 5
+            # task_basic_info: suspend_count, virtual_size, resident_size,
+            # user_time(2), system_time(2), policy, pad
+            info = (ctypes.c_uint64 * 10)()
+            count = ctypes.c_uint(len(info))
+            if libc.task_info(task, TASK_BASIC_INFO, info, ctypes.byref(count)) == 0:
+                return int(info[2])  # resident_size
+        except Exception:
+            pass
+    usage = resource.getrusage(resource.RUSAGE_SELF)
+    # Linux reports kilobytes; macOS/Darwin reports bytes.
+    return usage.ru_maxrss * (1 if sys.platform == "darwin" else 1024)
+
+
 # ---------------------------------------------------------------- TEST 1
-# Singleton guard: write a fake .sampler.pid with OUR pid, then call
-# _singleton_acquire() — it must NOT exit (because the recorded pid is us,
-# not a "different" alive process).
+# Singleton guard: write a fake .sampler.pid with a dead pid, then call
+# _singleton_acquire() — it must NOT exit (because the recorded pid is dead).
 print("\n=== TEST 1: singleton acquires when no other pid is alive ===")
 tmpdir = tempfile.mkdtemp(prefix="b11_test_")
 saved_base = server.BASE_DIR
 server.BASE_DIR = tmpdir
 try:
     lock = os.path.join(tmpdir, ".sampler.pid")
-    # write someone else's pid that does NOT exist (PID 1 is init on Linux
-    # but on Windows there's no PID 1; pick a clearly-dead high pid).
-    # Use psutil to find a definitely-dead pid.
-    import psutil
     dead_pid = None
     for cand in (999999, 999998, 999997):
-        if not psutil.pid_exists(cand):
+        if not _pid_exists(cand):
             dead_pid = cand
             break
     with open(lock, "w") as fh:
@@ -65,11 +99,9 @@ finally:
 
 
 # ---------------------------------------------------------------- TEST 2
-# Singleton guard: write a fake .sampler.pid with a LIVE pid (us, just
-# re-acquired is fine — but the spec wants an *other* alive pid). We use
-# a subprocess that holds itself alive briefly so psutil.pid_exists()
-# returns True, then call _singleton_acquire() from the parent: it MUST
-# call sys.exit(0).
+# Singleton guard: write a fake .sampler.pid with a LIVE pid (a subprocess
+# holding itself alive briefly), then call _singleton_acquire() from the
+# parent: it MUST call sys.exit(0).
 print("\n=== TEST 2: singleton exits if a live different pid holds the lock ===")
 import subprocess
 proc = subprocess.Popen([sys.executable, "-c",
@@ -80,10 +112,10 @@ try:
     hold = os.path.join(tmpdir, "hold.txt")
     deadline = time.time() + 5
     while time.time() < deadline and not os.path.exists(hold):
-        time.time() and time.sleep(0.05)
+        time.sleep(0.05)
     with open(hold) as fh:
         live_other = int(fh.read().strip())
-    assert psutil.pid_exists(live_other), "child died before test ran"
+    check("child process is alive", _pid_exists(live_other), "child died before test ran")
 
     # write the live-other pid into the lock file
     with open(lock, "w") as fh:
@@ -193,8 +225,7 @@ finally:
 print("\n=== TEST 4: bounded read never loses data over many ticks ===")
 hist2 = server.HistoryIndex()
 hist2.index_done.set()
-import psutil as _ps
-proc_rss0 = _ps.Process(os.getpid()).memory_info().rss
+proc_rss0 = _rss_bytes()
 last_offsets = {}
 for tick in range(5):
     # simulate the collector appending another 100 lines
@@ -204,7 +235,7 @@ for tick in range(5):
     got, n = hist2._read_new(bigfile)
     off = hist2.offsets.get(os.path.basename(bigfile), 0)
     last_offsets[tick] = (off, len(got))
-proc_rss1 = _ps.Process(os.getpid()).memory_info().rss
+proc_rss1 = _rss_bytes()
 # offsets should be monotonically non-decreasing
 ok = all(last_offsets[t][0] >= last_offsets[t-1][0]
          for t in range(1, len(last_offsets)))

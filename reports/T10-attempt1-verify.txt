@@ -1,0 +1,15 @@
+== 1. flag exists ==
+  FAIL  --headless missing from --help
+== 2. runs with NO controlling terminal ==
+  FAIL  headless exited early rc=2 err=error: unexpected argument '--headless' found
+
+  tip: a similar argument exists: '--help'
+
+Usage: syswatch --help
+
+For more information, try '--help'.
+
+== 4. output is JSON lines, no escape codes ==
+  FAIL  no log file written by --log
+
+VERDICT: T10 FAILS — 3 check(s)

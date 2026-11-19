@@ -1,0 +1,133 @@
+{
+  "updated": "2026-11-15T15:45:00",
+  "note": "v3 roadmap (2026-11-15): from scratch, dormant supervisor, per-app energy. Plan: .hermes/plans/2026-11-15-goal-plan-v3-supervisor.md",
+  "tasks": [
+    {
+      "id": "T2",
+      "brief": "briefs/T2.md",
+      "model": "opencode/deepseek-v4.1-flash-free",
+      "kind": "light",
+      "deps": [],
+      "status": "done"
+    },
+    {
+      "id": "T4a",
+      "brief": "briefs/T4a.md",
+      "model": "opencode/mimo-v2.6-flash-free",
+      "kind": "light",
+      "deps": [],
+      "status": "done"
+    },
+    {
+      "id": "T4b",
+      "brief": "briefs/T4b.md",
+      "model": "opencode/mimo-v2.6-flash-free",
+      "kind": "light",
+      "deps": [
+        "T4a"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "D1",
+      "brief": "briefs/D1.md",
+      "model": "opencode/mimo-v2.6-flash-free",
+      "kind": "build",
+      "deps": [],
+      "status": "running"
+    },
+    {
+      "id": "T3",
+      "brief": "briefs/T3.md",
+      "model": "opencode/mimo-v2.6-flash-free",
+      "kind": "light",
+      "deps": [
+        "D1"
+      ],
+      "status": "queued"
+    },
+    {
+      "id": "T7B",
+      "brief": "briefs/T7B.md",
+      "model": "opencode/mimo-v2.6-flash-free",
+      "kind": "build",
+      "deps": [
+        "D1"
+      ],
+      "status": "queued"
+    },
+    {
+      "id": "T7C",
+      "brief": "briefs/T7C.md",
+      "model": "opencode/nemotron-3.5-lightning-free",
+      "kind": "build",
+      "deps": [
+        "D1"
+      ],
+      "status": "queued"
+    },
+    {
+      "id": "D2",
+      "brief": "briefs/D2.md",
+      "model": "opencode/mimo-v2.6-flash-free",
+      "kind": "build",
+      "deps": [
+        "D1"
+      ],
+      "status": "queued"
+    },
+    {
+      "id": "T5",
+      "brief": "briefs/T5.md",
+      "model": "opencode/mimo-v2.6-flash-free",
+      "kind": "build",
+      "deps": [
+        "T3",
+        "T7B",
+        "T7C"
+      ],
+      "status": "blocked"
+    },
+    {
+      "id": "T6",
+      "brief": "briefs/T6.md",
+      "model": "opencode/nemotron-3.5-lightning-free",
+      "kind": "build",
+      "deps": [
+        "T5"
+      ],
+      "status": "blocked"
+    },
+    {
+      "id": "T7A",
+      "brief": "briefs/T7A.md",
+      "model": "opencode/nemotron-3.5-lightning-free",
+      "kind": "build",
+      "deps": [
+        "T6"
+      ],
+      "status": "blocked"
+    },
+    {
+      "id": "T8",
+      "brief": "briefs/T8.md",
+      "model": "opencode/mimo-v2.6-flash-free",
+      "kind": "build",
+      "deps": [
+        "T6"
+      ],
+      "status": "blocked"
+    },
+    {
+      "id": "T9",
+      "brief": "briefs/T9.md",
+      "model": "opencode/mimo-v2.6-flash-free",
+      "kind": "build",
+      "deps": [
+        "D1",
+        "T6"
+      ],
+      "status": "blocked"
+    }
+  ]
+}

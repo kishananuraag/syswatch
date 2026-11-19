@@ -1,0 +1,1 @@
+T10|briefs/T10.md|tools/verify_t10.sh|3

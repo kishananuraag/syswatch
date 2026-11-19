@@ -41,3 +41,38 @@
 | 2026-11-11 | T2 measurement harness (Python, 60s sampling, `--compare`) | `deepseek-v4.1-flash-free` | **PASS 5/5** | ~6 min | passed first attempt; wrote +602/-104 lines; honest about its own caveats (`ps` lifetime-average CPU, CRLF) |
 
 **Correction to this file's own advice:** DS4 was written off as "will fail anyway". It passed a real test-able task unhurried. Keep it in the rotation for *small, well-specified* work — it is slow, not stupid. Weak-model bias is as wrong as first-in-list laziness.
+
+---
+
+## RULE (from Kishan, 2026-11-11): agents run on **opencode zen free models only**
+OpenRouter is demoted to secondary — its free tier is capped (`free-models-per-day`) and produced zero work.
+Primary lane = `opencode/*-free` in the terminal. Model ranking comes from measured results, not vibes.
+
+## CORRECTION 2026-11-11 — roster rebuilt from `opencode models`, not the cache
+
+**Why this exists:** `opencode/space-bunny-free` is listed in `~/.cache/opencode/models.json` (catalog) but **not enabled on this account** — the first T4 dispatch died instantly with `Model unavailable`. A model you cannot call has zero context window. Rule: **the roster is built from `opencode models` ANDed with the catalog for limits.**
+
+| Actually callable | ctx | out | reasoning |
+|---|---|---|---|
+| `openrouter/nvidia/nemotron-3-ultra-550b-a55b:free` | 1000000 | 65536 | True |
+| `openrouter/nvidia/nemotron-3.5-lightning:free` | 1000000 | 65536 | True |
+| `opencode/nemotron-3.5-lightning-free` | 262144 | 262144 | True |
+| `openrouter/google/gemma-4-26b-a4b-it:free` | 262144 | 32768 | True |
+| `openrouter/google/gemma-4-31b-it:free` | 262144 | 32768 | True |
+| `openrouter/cohere/north-mini-code:free` | 256000 | 64000 | True |
+
+Use the `openrouter/*` free entries for big-context work; the `opencode/*` zen free tier tops out around 262k.
+
+
+## Human priors (Kishan's field notes — counted as evidence until the ledger overrules them)
+| Model | Note |
+|---|---|
+| `mimo` family (`opencode/mimo-v2.6-flash-free`) | **good quality, slower to process** — use for correctness-critical work, not throughput |
+| `deepseek-v4.1-flash-free` | passed T2 first attempt; slow but honest. Keep for small, well-specified tasks |
+| `nemotron-3.5-lightning-free` | 262k ctx / 262k out — current default for medium-large files |
+
+## How models get rated (no opinions)
+1. Every dispatch appends a LEDGER row: model, attempt, exit, wall time, acceptance result, diff size.
+2. Ranking = **acceptance pass rate first**, then **seconds per KB changed** (quality beats speed; speed breaks ties).
+3. 3 strikes on the same task class = the model leaves that class's rotation; 3 passes = it becomes the default for that class.
+4. A model that fails for *quota* reasons is never scored as a quality failure — different column.

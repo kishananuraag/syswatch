@@ -25,6 +25,31 @@ pub struct Config {
     pub color: bool,
     /// Days to keep --log JSONL files before pruning.
     pub retention_days: u64,
+    /// T20: `[powermetrics]` — the root daemon's sample cadence.
+    pub powermetrics: PowermetricsConfig,
+    /// T18 disk-side storage cascade.
+    pub storage: crate::storage::StorageConfig,
+}
+
+/// T20: powermetrics cadence, in milliseconds.
+///
+/// powermetrics is the single most expensive probe in the product: it is a
+/// subprocess that samples the machine's own counters.  At 5 s it accounted for
+/// 12 spikes a minute; at 15 s it is 4, and the agent as a whole lands inside
+/// the 1.5–2 % CPU budget.  The dashboard's power/temperature ring runs on the
+/// same cadence, so a timeline never implies more resolution than exists.
+pub const DEFAULT_POWERMETRICS_INTERVAL_MS: u64 = 15000;
+
+#[derive(Debug, Clone)]
+pub struct PowermetricsConfig {
+    /// Milliseconds between samples (passed to `syswatch-powerd --interval-ms`).
+    pub interval_ms: u64,
+}
+
+impl Default for PowermetricsConfig {
+    fn default() -> Self {
+        Self { interval_ms: DEFAULT_POWERMETRICS_INTERVAL_MS }
+    }
 }
 
 impl Default for Config {
@@ -41,6 +66,8 @@ impl Default for Config {
             temp: false,
             color: true,
             retention_days: 30,
+            powermetrics: PowermetricsConfig::default(),
+            storage: crate::storage::StorageConfig::default(),
         }
     }
 }
@@ -56,6 +83,33 @@ pub struct FileConfig {
     pub temperature: Option<bool>,
     pub color: Option<bool>,
     pub retention_days: Option<u64>,
+    /// T20. Absent table = the 15 s shipped cadence.
+    pub powermetrics: Option<FilePowermetrics>,
+    /// T18. Absent table = cascade on with the built-in defaults.
+    pub storage: Option<FileStorage>,
+}
+
+/// `[powermetrics]` table of `config.toml`. Every field optional.
+#[derive(Debug, Default, Deserialize)]
+pub struct FilePowermetrics {
+    /// Milliseconds between powermetrics samples. The root daemon's
+    /// `--interval-ms` is kept in step with this value; the dashboard's power
+    /// and temperature ring samples on the same cadence.
+    pub interval_ms: Option<u64>,
+}
+
+/// `[storage]` table of `config.toml`. Every field optional.
+#[derive(Debug, Default, Deserialize)]
+pub struct FileStorage {
+    /// Apply the 1 s → 15 s → 60 s → 300 s → 1800 s → archive cascade on
+    /// disk. `false` restores the pre-T18 one-raw-file-per-day layout.
+    pub cascade: Option<bool>,
+    /// Age cap for raw 1 s data, in hours.
+    pub raw_hours: Option<u64>,
+    /// Byte cap for raw 1 s data, in MiB. Whichever cap binds first wins.
+    pub raw_max_mb: Option<u64>,
+    /// Write the one-record-per-day archive tail.
+    pub archive: Option<bool>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -131,6 +185,27 @@ impl Config {
         }
         if let Some(v) = fc.retention_days {
             self.retention_days = v;
+        }
+        if let Some(p) = &fc.powermetrics {
+            if let Some(v) = p.interval_ms {
+                if v > 0 {
+                    self.powermetrics.interval_ms = v;
+                }
+            }
+        }
+        if let Some(s) = &fc.storage {
+            if let Some(v) = s.cascade {
+                self.storage.cascade = v;
+            }
+            if let Some(v) = s.raw_hours {
+                self.storage.raw_hours = v;
+            }
+            if let Some(v) = s.raw_max_mb {
+                self.storage.raw_max_bytes = v * 1024 * 1024;
+            }
+            if let Some(v) = s.archive {
+                self.storage.archive = v;
+            }
         }
     }
 }

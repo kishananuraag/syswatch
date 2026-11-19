@@ -312,13 +312,21 @@ fn boxed_line(content: &str, inner: usize) -> String {
 fn fmt_proc_pair(cpu: Option<&ProcRow>, mem: Option<&ProcRow>) -> String {
     let one = |pr: Option<&ProcRow>| match pr {
         None => " ".repeat(47),
-        Some(prc) => format!(
-            "{:<22}{:>7}{:>7.1}{:>8.0}M",
-            truncate(&prc.name, 22),
-            prc.pid,
-            prc.cpu_pct,
-            prc.mem_mb
-        ),
+        Some(prc) => {
+            // `cpu_pct` is an interval measurement; `null` (first sighting or
+            // an unreadable PID) shows as blank — never as 0.0.
+            let cpu = prc
+                .cpu_pct
+                .map(|v| format!("{:>7.1}", v))
+                .unwrap_or_else(|| format!("{:>7}", "n/a"));
+            format!(
+                "{:<22}{:>7}{}{:>8.0}M",
+                truncate(&prc.name, 22),
+                prc.pid,
+                cpu,
+                prc.mem_mb
+            )
+        }
     };
     format!("{}   {}", one(cpu), one(mem))
 }
