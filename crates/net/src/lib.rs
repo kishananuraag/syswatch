@@ -1,10 +1,15 @@
-//! Networking crate: device identity, iroh endpoint, pairing.
+//! Networking crate: device identity, iroh endpoint, pairing, metric stream.
 //!
 //! Every device generates an ed25519 keypair on first run. The public key
 //! (NodeId) is the device's identity — no accounts, no registration.
 
 pub mod endpoint;
 pub mod pairing;
+pub mod stream;
+pub mod viewer;
+
+#[cfg(test)]
+pub(crate) mod test_support;
 
 pub use endpoint::{IrohEndpoint, ECHO_ALPN, ECHO_ALPN_STR, MAX_ECHO_BYTES};
 pub use pairing::{
@@ -12,6 +17,8 @@ pub use pairing::{
     PairingHandle, PairingSession, PairingState, MAX_PAIRING_ATTEMPTS, MAX_PAIRED_BYTES, PAIR_ALPN,
     PAIR_ALPN_STR,
 };
+pub use stream::{MetricStream, METRIC_TICK};
+pub use viewer::{Snapshot, ViewerSession};
 
 use iroh_net::key::SecretKey;
 use serde::{Deserialize, Serialize};
@@ -291,6 +298,9 @@ pub enum NetError {
     /// A message exceeded the crate's buffering limits.
     #[error("message too large ({0} bytes, limit {1})")]
     TooLarge(usize, usize),
+    /// A payload on the metric stream was not an `/api/current` snapshot object.
+    #[error("invalid snapshot: {0}")]
+    BadSnapshot(String),
 }
 
 #[cfg(test)]
