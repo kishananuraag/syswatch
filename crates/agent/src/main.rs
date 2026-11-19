@@ -1,110 +1,196 @@
-use hyper::server::conn::http1;
-use hyper::service::service_fn;
-use hyper::{Method, Request, Response, StatusCode};
-use hyper_util::rt::TokioIo;
-use http_body_util::{Full, BodyExt};
-use std::convert::Infallible;
-use std::net::SocketAddr;
-use std::time::Instant;
+//! `syswatch-agent` — the SysWatch HTTP agent.
+//!
+//! Serves the dashboard API from Rust: `/api/health` and `/api/current` today,
+//! with the dashboard's static files alongside. `dashboard/server.py` stays the
+//! live server on 8123; this binary is designed to run beside it on a test port
+//! (`--port 8199`) until every endpoint has a Rust implementation.
+//!
+//! Startup order matters and is deliberate:
+//!
+//! 1. parse the flags (a typo is an error, never a silent default);
+//! 2. build ONE snapshot synchronously, so the first request after the port
+//!    opens already has real data (no 503 on a cold start);
+//! 3. start the sampler thread that refreshes it every tick — the HTTP
+//!    handlers never sample, they only read the slot;
+//! 4. bind loopback only, and print the ready line the tooling greps for.
+//!
+//! Nothing in this binary writes to the collector's log, the root daemon's
+//! `sample.json`, or any other process on the machine.
 
-static START: std::sync::OnceLock<Instant> = std::sync::OnceLock::new();
+mod cli;
+mod collector;
+mod consumers;
+mod gpu;
+mod routes;
+mod sampler;
+mod sensors;
+mod series;
+mod timefmt;
 
-fn uptime_s() -> u64 {
-    START.get().map(|s| s.elapsed().as_secs()).unwrap_or(0)
-}
+use std::sync::{Arc, RwLock};
+use std::time::{Duration, Instant};
 
-async fn handle(req: Request<hyper::body::Incoming>) -> Result<Response<Full<bytes::Bytes>>, Infallible> {
-    let path = req.uri().path().to_string();
-    let method = req.method().clone();
+use cli::{Args, Cli};
+use routes::AppState;
+use sampler::Sampler;
 
-    match (method, path.as_str()) {
-        (Method::GET, "/api/health") => {
-            let body = serde_json::json!({
-                "ok": true,
-                "pid": std::process::id(),
-                "uptime_s": uptime_s(),
-                "port": 8199u16,
-            });
-            Ok(json_response(StatusCode::OK, &body))
+fn main() {
+    let argv: Vec<String> = std::env::args().skip(1).collect();
+    let args = match Args::parse(argv) {
+        Ok(Cli::Run(a)) => a,
+        Ok(Cli::Help(text)) => {
+            println!("{text}");
+            return;
         }
-        (Method::GET, "/api/current") => {
-            // Read from root sample.json for power/temps
-            let home = std::env::var("HOME").unwrap_or_default();
-            let sample_path = format!("{}/Library/Application Support/syswatch/root/sample.json", home);
-            let root_sample: serde_json::Value = std::fs::read_to_string(&sample_path)
-                .ok()
-                .and_then(|s| serde_json::from_str(&s).ok())
-                .unwrap_or(serde_json::json!({}));
+        Ok(Cli::Version(v)) => {
+            println!("syswatch-agent {v}");
+            return;
+        }
+        Err(msg) => {
+            eprintln!("syswatch-agent: {msg}");
+            std::process::exit(2);
+        }
+    };
 
-            let body = serde_json::json!({
-                "cpu_total": null,
-                "memory_used_pct": null,
-                "root_sample": root_sample,
-                "agent": "rust",
-                "uptime_s": uptime_s(),
-            });
-            Ok(json_response(StatusCode::OK, &body))
+    let runtime = match tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+    {
+        Ok(rt) => rt,
+        Err(e) => {
+            eprintln!("syswatch-agent: could not start the async runtime: {e}");
+            std::process::exit(1);
         }
-        _ => {
-            // Serve static files from disk
-            let base = "dashboard/static";
-            let file_path = if path == "/" { format!("{}/index.html", base) } else { format!("{}{}", base, path) };
-            match std::fs::read(&file_path) {
-                Ok(data) => {
-                    let ct = if file_path.ends_with(".html") { "text/html" }
-                        else if file_path.ends_with(".js") { "application/javascript" }
-                        else if file_path.ends_with(".css") { "text/css" }
-                        else if file_path.ends_with(".json") { "application/json" }
-                        else if file_path.ends_with(".png") { "image/png" }
-                        else if file_path.ends_with(".svg") { "image/svg+xml" }
-                        else { "application/octet-stream" };
-                    let mut resp = Response::new(Full::new(bytes::Bytes::from(data)));
-                    resp.headers_mut().insert("content-type", ct.parse().unwrap());
-                    Ok(resp)
-                }
-                Err(_) => {
-                    let mut resp = Response::new(Full::new(bytes::Bytes::from("Not Found")));
-                    *resp.status_mut() = StatusCode::NOT_FOUND;
-                    Ok(resp)
-                }
-            }
-        }
+    };
+
+    if let Err(e) = runtime.block_on(serve(args)) {
+        eprintln!("syswatch-agent: {e}");
+        std::process::exit(1);
     }
 }
 
-fn json_response(status: StatusCode, body: &serde_json::Value) -> Response<Full<bytes::Bytes>> {
-    let json = serde_json::to_string(body).unwrap_or_default();
-    let mut resp = Response::new(Full::new(bytes::Bytes::from(json)));
-    *resp.status_mut() = status;
-    resp.headers_mut().insert("content-type", "application/json".parse().unwrap());
-    resp.headers_mut().insert("access-control-allow-origin", "*".parse().unwrap());
-    resp
+fn log(msg: &str) {
+    eprintln!("{} syswatch-agent: {msg}", timefmt::rfc3339_utc(timefmt::now_unix()));
 }
 
-#[tokio::main]
-async fn main() {
-    START.set(Instant::now()).ok();
+async fn serve(args: Args) -> Result<(), String> {
+    let start = Instant::now();
 
-    let port: u16 = std::env::args()
-        .skip_while(|a| a != "--port")
-        .nth(1)
-        .and_then(|p| p.parse().ok())
-        .unwrap_or(8199);
+    if !args.static_dir.join("index.html").is_file() {
+        log(&format!(
+            "warning: {} has no index.html — the API will work, the UI will 404",
+            args.static_dir.display()
+        ));
+    }
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], port));
-    println!("syswatch-agent listening on {}", addr);
+    // 1. First snapshot, synchronously: the port does not open with an empty
+    //    slot, so `/api/current` answers on the first request.
+    let mut sampler = Sampler::new(args.logs_dir.clone());
+    let first = sampler.build();
+    log(&format!(
+        "sampler primed: {} logical CPUs in {} cluster(s), {}% cpu, {} MiB used",
+        sampler.ncpu(),
+        sampler.clusters().len(),
+        first["cpu"]["total_pct"],
+        first["ram"]["used_bytes"].as_u64().unwrap_or(0) / 1_048_576,
+    ));
+    if first["collector"]["available"] == serde_json::json!(false) {
+        log(&format!(
+            "collector log: {} (the agent's own sensors still fill /api/current)",
+            first["collector"]["reason"].as_str().unwrap_or("unavailable")
+        ));
+    } else {
+        log(&format!(
+            "collector log: {} (age {} s)",
+            first["collector"]["path"].as_str().unwrap_or("?"),
+            first["collector"]["age_s"],
+        ));
+    }
 
-    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-    loop {
-        let (stream, _) = listener.accept().await.unwrap();
-        let io = TokioIo::new(stream);
-        tokio::spawn(async move {
-            if let Err(e) = http1::Builder::new()
-                .serve_connection(io, service_fn(handle))
-                .await
-            {
-                eprintln!("connection error: {}", e);
-            }
-        });
+    let snapshot: Arc<RwLock<Option<serde_json::Value>>> = Arc::new(RwLock::new(Some(first)));
+
+    // 2. Sampler thread. A plain OS thread, not a tokio task: the work is
+    //    blocking (ioreg spawns, sysinfo process sweeps) and must never sit on
+    //    the runtime the handlers use.
+    {
+        let slot = Arc::clone(&snapshot);
+        let tick = Duration::from_millis(args.tick_ms);
+        std::thread::Builder::new()
+            .name("syswatch-sampler".into())
+            .spawn(move || {
+                loop {
+                    std::thread::sleep(tick);
+                    let snap = sampler.build();
+                    match slot.write() {
+                        Ok(mut w) => *w = Some(snap),
+                        Err(_) => break, // poisoned: shut the sampler down
+                    }
+                }
+            })
+            .map_err(|e| format!("could not start the sampler thread: {e}"))?;
+    }
+
+    // 3. Bind. Loopback only, exactly like the Python server.
+    let addr = format!("{}:{}", args.host, args.port);
+    let listener = tokio::net::TcpListener::bind(&addr).await.map_err(|e| {
+        format!(
+            "cannot bind {addr}: {e}\n  \
+             the live dashboard is dashboard/server.py on 8123 — start the agent on \
+             another port, e.g. --port 8199"
+        )
+    })?;
+    let port = listener
+        .local_addr()
+        .map_err(|e| format!("bound socket has no address: {e}"))?
+        .port();
+
+    let state = AppState {
+        start,
+        port,
+        snapshot,
+        static_dir: args.static_dir.clone(),
+        logs_dir: args.logs_dir.clone(),
+        tick_ms: args.tick_ms,
+    };
+
+    log(&format!(
+        "serving /api/health and /api/current on http://{addr} (static: {}, tick {} ms)",
+        args.static_dir.display(),
+        args.tick_ms
+    ));
+    // The Python server prints "SYSWATCH_DASHBOARD_READY on port N"; tooling
+    // that starts either binary greps one pattern, so keep the same shape.
+    println!("SYSWATCH_AGENT_READY on port {port}");
+
+    axum::serve(listener, routes::router(state))
+        .with_graceful_shutdown(shutdown_signal())
+        .await
+        .map_err(|e| format!("server stopped: {e}"))?;
+    log("shutdown complete");
+    Ok(())
+}
+
+/// Ctrl-C or SIGTERM: stop accepting, let in-flight requests finish. The
+/// Python server handles SIGTERM the same way (T4a #3) so a supervisor script
+/// can stop either implementation with one signal.
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        let _ = tokio::signal::ctrl_c().await;
+    };
+
+    #[cfg(unix)]
+    let term = async {
+        if let Ok(mut sig) =
+            tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+        {
+            sig.recv().await;
+        }
+    };
+    #[cfg(not(unix))]
+    let term = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {}
+        _ = term => {}
     }
 }
