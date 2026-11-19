@@ -1,9 +1,15 @@
 [package]
 name = "syswatch-sensors-macos"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2024"
 license = "Apache-2.0"
 
 [dependencies]
 syswatch-core = { path = "../core" }
 sysinfo = "0.33"
+# sample.json written by the root daemon (syswatch-powerd) — parsed, never
+# edited from here.
+serde_json = "1"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
