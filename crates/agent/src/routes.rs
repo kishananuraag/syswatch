@@ -1,5 +1,7 @@
-//! HTTP surface: `/api/health`, `/api/current`, and the dashboard's static
-//! files — the two endpoints T24 migrates, served beside the Python server.
+//! HTTP surface: `/api/health`, `/api/current`, the six migrated history and
+//! hardware endpoints (`/api/graph`, `/api/history`, `/api/power`,
+//! `/api/analytics`, `/api/battery`, `/api/thermal`), and the dashboard's
+//! static files.
 //!
 //! # Shape parity is the contract
 //!
@@ -10,17 +12,21 @@
 //!
 //! `/api/current` returns the Python server's blocks (`cpu`, `ram`, `net`,
 //! `temps_c`, `processes`, `proc_count`, `boot_ts`, `load`, `battery`, `gpu`,
-//! `disk_io`, `disk`, `pressure`, `unavailable`, `memory`) plus three the
-//! agent can answer (`power`, `volumes`, `collector`, `agent`). Extra keys are
+//! `disk_io`, `disk`, `pressure`, `unavailable`, `memory`) plus four the agent
+//! can answer (`power`, `volumes`, `collector`, `agent`). Extra keys are
 //! additive: nothing in the UI reads a key the Python server did not send.
+//!
+//! The six migrated endpoints each name their implementation module in its own
+//! doc comment and disclose which source answered (`sources`), because the
+//! agent reads the collector's JSONL tiers and its own 1 s ring where the
+//! Python server reads its in-memory rings.
 //!
 //! # Endpoints that are NOT here
 //!
-//! Everything else under `/api/` (graph, history, power, analytics, consumers,
-//! apps, battery, sensors, logs, alerts, agent-events, permissions) still lives
-//! in `dashboard/server.py`, which stays the live server. This agent answers
-//! them with an honest 404 that names what it does implement, rather than a
-//! bare "not found" that looks like a bug.
+//! `consumers`, `apps`, `apps/series`, `logs`, `alerts`, `agent-events`,
+//! `permissions`, `power/history` still live in `dashboard/server.py`, which
+//! stays the live server. This agent answers them with an honest 404 that names
+//! what it does implement, rather than a bare "not found" that looks like a bug.
 
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
@@ -36,6 +42,8 @@ use serde_json::{Value, json};
 use tower_http::cors::CorsLayer;
 use tower_http::services::{ServeDir, ServeFile};
 
+use crate::histdata::History;
+
 /// What the handlers can see. The snapshot slot is written only by the sampler
 /// thread and read by handlers, so a request never blocks on a sample.
 #[derive(Clone)]
@@ -47,10 +55,27 @@ pub struct AppState {
     pub snapshot: Arc<RwLock<Option<Value>>>,
     pub static_dir: PathBuf,
     pub logs_dir: PathBuf,
+    /// `dashboard/data` — where `battery-history.jsonl` lives (read-only here).
+    pub data_dir: PathBuf,
+    /// Ring + collector reader, shared by graph/history/analytics/power.
+    pub history: Arc<History>,
     pub tick_ms: u64,
 }
 
-const MIGRATED: &[&str] = &["/api/health", "/api/current", "/api/sensors", "/api/series", "/api/consumers", "/api/apps"];
+const MIGRATED: &[&str] = &[
+    "/api/health",
+    "/api/current",
+    "/api/sensors",
+    "/api/series",
+    "/api/consumers",
+    "/api/apps",
+    "/api/graph",
+    "/api/history",
+    "/api/power",
+    "/api/analytics",
+    "/api/battery",
+    "/api/thermal",
+];
 
 pub fn router(state: AppState) -> Router {
     let static_dir = state.static_dir.clone();
@@ -62,6 +87,12 @@ pub fn router(state: AppState) -> Router {
         .route("/api/series", get(series_handler))
         .route("/api/consumers", get(consumers_handler))
         .route("/api/apps", get(consumers_handler))
+        .route("/api/graph", get(graph_handler))
+        .route("/api/history", get(history_handler))
+        .route("/api/power", get(power_handler))
+        .route("/api/analytics", get(analytics_handler))
+        .route("/api/battery", get(battery_handler))
+        .route("/api/thermal", get(thermal_handler))
         // The dashboard's own routes: "/" and "/analytics" both serve the SPA.
         .route_service("/", index.clone())
         .route_service("/analytics", index)
@@ -142,6 +173,107 @@ async fn consumers_handler(State(state): State<AppState>, Query(q): Query<Consum
     Json(feed.consumers(q.offset.unwrap_or(0), q.limit.unwrap_or(50)))
 }
 
+#[derive(serde::Deserialize)]
+struct GraphQuery {
+    metric: Option<String>,
+    range: Option<String>,
+    from: Option<String>,
+    to: Option<String>,
+    max_points: Option<usize>,
+}
+
+/// `/api/graph` — see [`crate::graph`].
+///
+/// `from`/`to` accept unix seconds or an ISO-8601 timestamp (the Python server
+/// accepts both); anything unparseable is ignored rather than guessed at.
+async fn graph_handler(State(state): State<AppState>, Query(q): Query<GraphQuery>) -> Json<Value> {
+    let req = crate::graph::GraphRequest {
+        metric: q.metric.unwrap_or_default(),
+        range: q.range,
+        from: q.from.as_deref().and_then(parse_epoch),
+        to: q.to.as_deref().and_then(parse_epoch),
+        max_points: q.max_points.unwrap_or(crate::histdata::MAX_POINTS).clamp(1, 5_000),
+    };
+    Json(crate::graph::payload(
+        &state.history,
+        &req,
+        crate::timefmt::now_unix() as f64,
+    ))
+}
+
+#[derive(serde::Deserialize)]
+struct HistoryQuery {
+    range: Option<String>,
+    metric: Option<String>,
+}
+
+/// `/api/history` — see [`crate::history`]. An unknown range is a 400 with the
+/// list of valid ones, exactly like the Python server.
+async fn history_handler(State(state): State<AppState>, Query(q): Query<HistoryQuery>) -> Response {
+    let req = crate::history::HistoryRequest {
+        range: q.range.unwrap_or_else(|| "1h".to_string()),
+        metric: q.metric,
+    };
+    match crate::history::payload(&state.history, &req, crate::timefmt::now_unix() as f64) {
+        Ok(v) => (StatusCode::OK, Json(v)).into_response(),
+        Err(msg) => (StatusCode::BAD_REQUEST, Json(json!({"error": msg}))).into_response(),
+    }
+}
+
+/// `/api/power` — see [`crate::power`]. Always 200: a missing root daemon is a
+/// normal state and the payload names it in `root_sample.reason`.
+async fn power_handler(State(state): State<AppState>) -> Json<Value> {
+    Json(crate::power::payload(&state.history))
+}
+
+#[derive(serde::Deserialize)]
+struct AnalyticsQuery {
+    range: Option<String>,
+}
+
+/// `/api/analytics` — see [`crate::analytics`].
+async fn analytics_handler(
+    State(state): State<AppState>,
+    Query(q): Query<AnalyticsQuery>,
+) -> Response {
+    let req = crate::analytics::AnalyticsRequest {
+        range: q.range.unwrap_or_else(|| "1h".to_string()),
+    };
+    match crate::analytics::payload(
+        &state.history,
+        &state.logs_dir,
+        &req,
+        crate::timefmt::now_unix() as f64,
+    ) {
+        Ok(v) => (StatusCode::OK, Json(v)).into_response(),
+        Err(msg) => (StatusCode::BAD_REQUEST, Json(json!({"error": msg}))).into_response(),
+    }
+}
+
+/// `/api/battery` — see [`crate::battery`].
+async fn battery_handler(State(state): State<AppState>) -> Json<Value> {
+    Json(crate::battery::payload(&state.data_dir))
+}
+
+/// `/api/thermal` — see [`crate::thermal`].
+async fn thermal_handler(State(_state): State<AppState>) -> Json<Value> {
+    Json(crate::thermal::payload())
+}
+
+/// Unix seconds from `1700000000`, `1700000000.5` or `2026-11-19T05:30:00Z`.
+fn parse_epoch(s: &str) -> Option<f64> {
+    let s = s.trim();
+    if s.is_empty() {
+        return None;
+    }
+    if let Ok(v) = s.parse::<f64>()
+        && v.is_finite()
+    {
+        return Some(if v > 1e12 { v / 1000.0 } else { v });
+    }
+    crate::timefmt::parse_rfc3339(s)
+}
+
 /// JSON 404 for everything this binary does not implement yet, listing what it
 /// does. The static-file fallback lands here too, which is why the body names
 /// the static prefix.
@@ -182,12 +314,23 @@ mod tests {
     use tower::ServiceExt;
 
     fn state(with_snapshot: bool) -> AppState {
-        let mut s = AppState {
+        let static_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../dashboard/static");
+        let logs_dir = std::env::temp_dir().join(format!(
+            "syswatch-routes-test-{}",
+            std::process::id()
+        ));
+        let s = AppState {
             start: Instant::now(),
             port: 8199,
             snapshot: Arc::new(RwLock::new(None)),
-            static_dir: std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .join("../../dashboard/static"),
+            data_dir: std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../dashboard/data"),
+            static_dir,
+            history: Arc::new(History::new(logs_dir)),
+            logs_dir: std::env::temp_dir().join(format!(
+                "syswatch-routes-logs-{}",
+                std::process::id()
+            )),
             tick_ms: 1000,
         };
         if with_snapshot {
@@ -238,11 +381,89 @@ mod tests {
 
     #[tokio::test]
     async fn unmigrated_api_is_an_honest_404() {
-        let (status, v) = get(router(state(true)), "/api/graph?metric=cpu").await;
+        let (status, v) = get(router(state(true)), "/api/logs?limit=5").await;
         assert_eq!(status, StatusCode::NOT_FOUND);
         assert_eq!(v["error"], json!("not found"));
-        assert_eq!(v["implemented_api"], json!(["/api/health", "/api/current"]));
+        assert!(
+            v["implemented_api"]
+                .as_array()
+                .unwrap()
+                .contains(&json!("/api/graph"))
+        );
         assert!(v["detail"].as_str().unwrap().contains("not migrated"));
+    }
+
+    #[tokio::test]
+    async fn the_six_migrated_endpoints_answer_with_json() {
+        // No collector log in the temp dir: every one of these must still answer
+        // 200 with a well-formed payload that says what it could not measure.
+        for (uri, key) in [
+            ("/api/graph", "metric"),
+            ("/api/history", "range"),
+            ("/api/power", "tiers"),
+            ("/api/analytics", "ranges"),
+            ("/api/battery", "sources"),
+            ("/api/thermal", "sensors"),
+        ] {
+            let (status, v) = get(router(state(true)), uri).await;
+            assert_eq!(status, StatusCode::OK, "{uri}");
+            assert!(v.get(key).is_some(), "{uri} has no {key}: {v}");
+        }
+    }
+
+    #[tokio::test]
+    async fn graph_defaults_to_cpu_and_names_its_window() {
+        let (status, v) = get(router(state(true)), "/api/graph?range=1h").await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(v["metric"], json!("cpu"));
+        assert_eq!(v["range"], json!("1h"));
+        let window = v["to"].as_i64().unwrap() - v["from"].as_i64().unwrap();
+        assert_eq!(window, 3600);
+        assert!(v["ticks"].as_array().is_some());
+        // Empty history on a fresh machine is a 200 with a reason.
+        assert_eq!(v["available"], json!(false));
+        assert!(v["unavailable_reason"].as_str().unwrap().contains("no cpu samples"));
+    }
+
+    #[tokio::test]
+    async fn graph_rejects_an_unknown_metric_visibly() {
+        let (status, v) = get(router(state(true)), "/api/graph?metric=watts").await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(v["available"], json!(false));
+        assert!(v["error"].as_str().unwrap().contains("unknown metric"));
+        assert!(v["implemented_metrics"].as_array().unwrap().contains(&json!("cpu")));
+    }
+
+    #[tokio::test]
+    async fn history_rejects_an_unknown_range_with_400() {
+        let (status, v) = get(router(state(true)), "/api/history?range=2h").await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert!(v["error"].as_str().unwrap().contains("range must be one of"));
+    }
+
+    #[tokio::test]
+    async fn analytics_rejects_an_unknown_range_with_400() {
+        let (status, v) = get(router(state(true)), "/api/analytics?range=9d").await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert!(v["error"].as_str().unwrap().contains("range must be one of"));
+    }
+
+    #[tokio::test]
+    async fn thermal_and_power_agree_about_the_root_daemon() {
+        // Both read the same file behind the same staleness rule, so either both
+        // have it or both say why not.
+        let (_, power) = get(router(state(true)), "/api/power").await;
+        let (_, thermal) = get(router(state(true)), "/api/thermal").await;
+        assert_eq!(thermal["available"], power["root_sample"]["available"]);
+    }
+
+    #[test]
+    fn from_and_to_accept_epochs_and_iso() {
+        assert_eq!(parse_epoch("1795113019"), Some(1_795_113_019.0));
+        assert_eq!(parse_epoch("1795113019000"), Some(1_795_113_019.0));
+        assert_eq!(parse_epoch("2026-11-19T05:30:00Z"), Some(1_795_066_200.0));
+        assert_eq!(parse_epoch("junk"), None);
+        assert_eq!(parse_epoch(""), None);
     }
 
     #[tokio::test]

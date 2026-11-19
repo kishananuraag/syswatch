@@ -60,6 +60,16 @@ const NET_SKIP_PREFIX: &[&str] = &[
     "lo", "loopback", "gif", "stf", "anpi", "awdl", "llw", "ap1", "bridge", "p2p", "xhc", "vnic",
     "ipsec",
 ];
+
+/// Is this interface name a pseudo interface that never carries traffic?
+///
+/// Shared with `histdata` so a bandwidth chart built from collector records
+/// agrees with `/api/current`'s hero number (both exclude loopback, awdl and
+/// friends).
+pub(crate) fn is_pseudo_iface(name: &str) -> bool {
+    let low = name.to_ascii_lowercase();
+    NET_SKIP_PREFIX.iter().any(|p| low.starts_with(p))
+}
 const CLUSTER_BASIS: &str = "hw.perflevel1.logicalcpu efficiency cores occupy logical CPUs 0..E-1; \
                              hw.perflevel0.logicalcpu performance cores follow — verified with a \
                              single-thread load (spikes at indices 4-6)";

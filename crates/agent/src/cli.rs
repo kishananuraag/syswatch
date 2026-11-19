@@ -1,7 +1,7 @@
 //! Command line: `syswatch-agent [--port N] [--host H] [--static-dir DIR]
-//! [--logs-dir DIR] [--tick-ms N]`.
+//! [--logs-dir DIR] [--data-dir DIR] [--tick-ms N]`.
 //!
-//! Hand-rolled rather than `clap`: the surface is five flags, and the agent is
+//! Hand-rolled rather than `clap`: the surface is six flags, and the agent is
 //! the process that must start fast and small. Unknown flags are an error, not
 //! a silent default — a typo'd `--prot 8199` must not quietly bind 8123.
 
@@ -30,6 +30,9 @@ pub struct Args {
     pub host: String,
     pub static_dir: PathBuf,
     pub logs_dir: PathBuf,
+    /// `dashboard/data` in the Python server — where `battery-history.jsonl`
+    /// lives. Read-only for this binary.
+    pub data_dir: PathBuf,
     /// Sampler tick. 1000 ms is the dashboard's cadence; the only reason to
     /// change it is a test that wants a snapshot sooner.
     pub tick_ms: u64,
@@ -43,6 +46,7 @@ impl Args {
             host: DEFAULT_HOST.to_string(),
             static_dir: default_static_dir(),
             logs_dir: default_logs_dir(),
+            data_dir: default_data_dir(),
             tick_ms: 1000,
         };
         let mut it = argv.into_iter().peekable();
@@ -71,6 +75,7 @@ impl Args {
                 "--host" => args.host = value("--host")?,
                 "--static-dir" => args.static_dir = PathBuf::from(value("--static-dir")?),
                 "--logs-dir" => args.logs_dir = PathBuf::from(value("--logs-dir")?),
+                "--data-dir" => args.data_dir = PathBuf::from(value("--data-dir")?),
                 "--tick-ms" => {
                     let v = value("--tick-ms")?;
                     let ms: u64 = v
@@ -101,6 +106,7 @@ pub fn usage() -> String {
          \x20     --host <H>        bind address (default {})\n\
          \x20     --static-dir <D>  dashboard static dir (default {})\n\
          \x20     --logs-dir <D>    collector JSONL dir (default {})\n\
+         \x20     --data-dir <D>    dashboard data dir, for battery-history.jsonl (default {})\n\
          \x20     --tick-ms <N>     sampler tick (default 1000, min 100)\n\
          \x20 -h, --help            this text\n\
          \x20 -V, --version         agent version",
@@ -109,7 +115,8 @@ pub fn usage() -> String {
         DEFAULT_PORT,
         DEFAULT_HOST,
         default_static_dir().display(),
-        default_logs_dir().display()
+        default_logs_dir().display(),
+        default_data_dir().display()
     )
 }
 
@@ -137,6 +144,18 @@ pub fn default_logs_dir() -> PathBuf {
     {
         PathBuf::from(home).join(".local/share/syswatch/logs")
     }
+}
+
+/// `dashboard/data` — the Python server's `DATA_DIR` (`SYSWATCH_DATA` override).
+/// Resolved next to the static dir so `--static-dir` keeps the pair together.
+pub fn default_data_dir() -> PathBuf {
+    if let Ok(dir) = std::env::var("SYSWATCH_DATA") {
+        return PathBuf::from(dir);
+    }
+    default_static_dir()
+        .parent()
+        .map(|p| p.join("data"))
+        .unwrap_or_else(|| PathBuf::from("data"))
 }
 
 #[cfg(test)]

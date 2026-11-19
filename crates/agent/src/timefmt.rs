@@ -24,8 +24,9 @@ pub fn rfc3339_utc(unix_secs: i64) -> String {
 }
 
 /// Days since 1970-01-01 → (year, month, day). Valid for the whole range of
-/// dates this machine can produce.
-fn civil_from_days(days: i64) -> (i64, u32, u32) {
+/// dates this machine can produce. Shared with the graph tick ladder, which
+/// works in local-time seconds and formats civil parts by hand.
+pub(crate) fn civil_from_days(days: i64) -> (i64, u32, u32) {
     let z = days + 719_468;
     let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
     let doe = z - era * 146_097; // [0, 146096]

@@ -223,7 +223,7 @@ mod tests {
                      "threads": 22, "watts": 0.015, "energy_nj_delta": 90620313,
                      "energy_share_pct": 1.07, "perm": true},
                     {"pid": 20, "name": "find", "cpu_pct": 21.7, "mem_mb": 16.5,
-                     "threads": 1, "watts": 1.194, "energy_nj_delta": 7149712459,
+                     "threads": 1, "watts": 1.194, "energy_nj_delta": 7149712459i64,
                      "energy_share_pct": 84.6, "perm": true}
                 ],
                 "by_mem": [
@@ -246,7 +246,7 @@ mod tests {
         assert_eq!(chrome["name"], "chrome");
         assert_eq!(chrome["cpu_pct"], 43.8);
         assert_eq!(chrome["memory_mb"], 471.0);
-        assert_eq!(chrome["threads"], 22);
+        assert_eq!(chrome["threads"], 22.0);
         let find = rows.iter().find(|r| r["pid"] == 20).unwrap();
         assert_eq!(find["watts"], 1.194);
     }

@@ -127,6 +127,29 @@ impl CollectorLog {
     }
 }
 
+/// Newest record of the `raw/` tier, which is the only one that carries the
+/// `processes` block.
+///
+/// The daily and rollup tiers aggregate the same counters but drop `processes`
+/// (verified: the 15 s daily record has `cpu`, `memory`, `disks`, `networks`,
+/// `energy`, `temperature`, `process_count` and no per-PID rows). `/api/power`'s
+/// per-app attribution therefore reads this tier specifically, and reports
+/// `None` when it is empty rather than a silent zero-attribution.
+pub(crate) fn latest_raw_record(logs_dir: &Path) -> Option<Value> {
+    let dir = logs_dir.join("raw");
+    let mut names: Vec<String> = std::fs::read_dir(&dir)
+        .ok()?
+        .filter_map(|e| e.ok())
+        .map(|e| e.file_name().to_string_lossy().into_owned())
+        .filter(|n| n.ends_with(".jsonl"))
+        .collect();
+    names.sort();
+    let name = names.pop()?;
+    let path = dir.join(name);
+    let size = std::fs::metadata(&path).ok()?.len();
+    read_last_line(&path, size)
+}
+
 /// Sorted `*.jsonl` names in `dir`, newest last — the same ordering rule the
 /// Python server uses (the collector rotates by date, so name order is time
 /// order).
@@ -146,7 +169,7 @@ fn newest_log(dir: &Path) -> Option<PathBuf> {
 /// A partially-written trailing line (the collector appends while we read) is
 /// simply skipped: the loop keeps the last line that parses, and a truncated
 /// tail yields the previous record rather than an error.
-fn read_last_line(path: &Path, size: u64) -> Option<Value> {
+pub(crate) fn read_last_line(path: &Path, size: u64) -> Option<Value> {
     let mut file = File::open(path).ok()?;
     let start = size.saturating_sub(TAIL_BYTES);
     file.seek(SeekFrom::Start(start)).ok()?;

@@ -218,8 +218,9 @@ impl SeriesReader {
     }
 }
 
-/// `*.jsonl` files with their window start, newest first.
-fn jsonl_files(dir: &Path) -> Vec<(PathBuf, f64, f64)> {
+/// `*.jsonl` files with their window start, newest first. Shared with
+/// `histdata`, which walks the same tiers for graph/history/analytics.
+pub(crate) fn jsonl_files(dir: &Path) -> Vec<(PathBuf, f64, f64)> {
     let Ok(rd) = std::fs::read_dir(dir) else {
         return Vec::new();
     };
@@ -530,19 +531,21 @@ mod tests {
     #[test]
     fn timestamp_formats() {
         let r = rec();
-        assert_eq!(record_ts(&r), Some(1_795_114_200.0));
-        let ms: Value = serde_json::json!({"ts": 1_795_114_200_000i64});
-        assert_eq!(record_ts(&ms), Some(1_795_114_200.0));
+        // 2026-11-19T05:30:00Z — checked against
+        // datetime.fromisoformat("2026-11-19T05:30:00+00:00").timestamp().
+        assert_eq!(record_ts(&r), Some(1_795_066_200.0));
+        let ms: Value = serde_json::json!({"ts": 1_795_066_200_000i64});
+        assert_eq!(record_ts(&ms), Some(1_795_066_200.0));
     }
 
     #[test]
     fn file_windows_from_names() {
         let (start, w) = file_window("2026-11-19T05-30.jsonl").unwrap();
-        assert_eq!(start, 1_795_114_200.0);
+        assert_eq!(start, 1_795_066_200.0);
         assert_eq!(w, RAW_WINDOW_S);
         let (start, w) = file_window("2026-11-19.jsonl").unwrap();
         assert_eq!(w, DAILY_WINDOW_S);
-        assert_eq!(start, 1_795_104_000.0);
+        assert_eq!(start, 1_795_046_400.0);
         assert!(file_window("readme.txt").is_none());
     }
 

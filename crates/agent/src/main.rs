@@ -1,9 +1,12 @@
 //! `syswatch-agent` — the SysWatch HTTP agent.
 //!
-//! Serves the dashboard API from Rust: `/api/health` and `/api/current` today,
-//! with the dashboard's static files alongside. `dashboard/server.py` stays the
-//! live server on 8123; this binary is designed to run beside it on a test port
-//! (`--port 8199`) until every endpoint has a Rust implementation.
+//! Serves the dashboard API from Rust: `/api/health`, `/api/current`,
+//! `/api/sensors`, `/api/series`, `/api/consumers`, `/api/apps`, and the six
+//! history/hardware endpoints (`/api/graph`, `/api/history`, `/api/power`,
+//! `/api/analytics`, `/api/battery`, `/api/thermal`), with the dashboard's
+//! static files alongside. `dashboard/server.py` stays the live server on 8123;
+//! this binary is designed to run beside it on a test port (`--port 8199`) until
+//! every endpoint has a Rust implementation.
 //!
 //! Startup order matters and is deliberate:
 //!
@@ -11,26 +14,36 @@
 //! 2. build ONE snapshot synchronously, so the first request after the port
 //!    opens already has real data (no 503 on a cold start);
 //! 3. start the sampler thread that refreshes it every tick — the HTTP
-//!    handlers never sample, they only read the slot;
+//!    handlers never sample, they only read the slot — and feed the same
+//!    snapshot into the history ring that `/api/graph` and `/api/history` plot;
 //! 4. bind loopback only, and print the ready line the tooling greps for.
 //!
 //! Nothing in this binary writes to the collector's log, the root daemon's
-//! `sample.json`, or any other process on the machine.
+//! `sample.json`, the battery history, or any other process's file.
 
+mod analytics;
+mod battery;
 mod cli;
 mod collector;
 mod consumers;
+mod graph;
 mod gpu;
+mod histdata;
+mod history;
+mod ioreg;
+mod power;
 mod routes;
 mod sampler;
 mod sensors;
 mod series;
+mod thermal;
 mod timefmt;
 
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 
 use cli::{Args, Cli};
+use histdata::History;
 use routes::AppState;
 use sampler::Sampler;
 
@@ -109,11 +122,20 @@ async fn serve(args: Args) -> Result<(), String> {
 
     let snapshot: Arc<RwLock<Option<serde_json::Value>>> = Arc::new(RwLock::new(Some(first)));
 
+    // The history ring shares the sampler's snapshots: `/api/graph` and
+    // `/api/history` plot the last two hours of them at 1 s, which is what makes
+    // a short window meaningful even when the collector is not running.
+    let history = Arc::new(History::new(args.logs_dir.clone()));
+    if let Some(snap) = snapshot.read().ok().and_then(|g| g.clone()) {
+        history.push(&snap);
+    }
+
     // 2. Sampler thread. A plain OS thread, not a tokio task: the work is
     //    blocking (ioreg spawns, sysinfo process sweeps) and must never sit on
     //    the runtime the handlers use.
     {
         let slot = Arc::clone(&snapshot);
+        let ring = Arc::clone(&history);
         let tick = Duration::from_millis(args.tick_ms);
         std::thread::Builder::new()
             .name("syswatch-sampler".into())
@@ -121,6 +143,7 @@ async fn serve(args: Args) -> Result<(), String> {
                 loop {
                     std::thread::sleep(tick);
                     let snap = sampler.build();
+                    ring.push(&snap);
                     match slot.write() {
                         Ok(mut w) => *w = Some(snap),
                         Err(_) => break, // poisoned: shut the sampler down
@@ -150,11 +173,14 @@ async fn serve(args: Args) -> Result<(), String> {
         snapshot,
         static_dir: args.static_dir.clone(),
         logs_dir: args.logs_dir.clone(),
+        data_dir: args.data_dir.clone(),
+        history,
         tick_ms: args.tick_ms,
     };
 
     log(&format!(
-        "serving /api/health and /api/current on http://{addr} (static: {}, tick {} ms)",
+        "serving /api/{{health,current,sensors,series,consumers,apps,graph,history,power,analytics,battery,thermal}} \
+         on http://{addr} (static: {}, tick {} ms)",
         args.static_dir.display(),
         args.tick_ms
     ));
