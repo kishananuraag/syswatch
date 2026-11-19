@@ -1,0 +1,11 @@
+[package]
+name = "syswatch-store"
+version = "0.3.0"
+edition = "2024"
+license = "Apache-2.0"
+
+[dependencies]
+syswatch-core = { path = "../core" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"

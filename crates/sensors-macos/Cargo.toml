@@ -1,0 +1,9 @@
+[package]
+name = "syswatch-sensors-macos"
+version = "0.3.0"
+edition = "2024"
+license = "Apache-2.0"
+
+[dependencies]
+syswatch-core = { path = "../core" }
+sysinfo = "0.33"

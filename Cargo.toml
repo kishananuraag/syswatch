@@ -4,6 +4,9 @@ version = "0.2.0"
 edition = "2024"
 
 [dependencies]
+syswatch-core = { path = "crates/core" }
+syswatch-store = { path = "crates/store" }
+syswatch-sensors-macos = { path = "crates/sensors-macos" }
 sysinfo = "0.33"
 crossterm = "0.28"
 ratatui = "0.29"
