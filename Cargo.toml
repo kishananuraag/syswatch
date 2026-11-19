@@ -7,6 +7,7 @@ edition = "2024"
 syswatch-core = { path = "crates/core" }
 syswatch-store = { path = "crates/store" }
 syswatch-sensors-macos = { path = "crates/sensors-macos" }
+syswatch-net = { path = "crates/net" }
 sysinfo = "0.33"
 crossterm = "0.28"
 ratatui = "0.29"
