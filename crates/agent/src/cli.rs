@@ -36,6 +36,10 @@ pub struct Args {
     /// Sampler tick. 1000 ms is the dashboard's cadence; the only reason to
     /// change it is a test that wants a snapshot sooner.
     pub tick_ms: u64,
+    /// T18 cascade dir. `Some` makes every sampler tick also write through
+    /// `syswatch_store::CascadeStore` into this directory; `None` (the
+    /// default) keeps the agent read-only, exactly as before.
+    pub cascade_dir: Option<PathBuf>,
 }
 
 impl Args {
@@ -48,6 +52,7 @@ impl Args {
             logs_dir: default_logs_dir(),
             data_dir: default_data_dir(),
             tick_ms: 1000,
+            cascade_dir: None,
         };
         let mut it = argv.into_iter().peekable();
         while let Some(arg) = it.next() {
@@ -76,6 +81,9 @@ impl Args {
                 "--static-dir" => args.static_dir = PathBuf::from(value("--static-dir")?),
                 "--logs-dir" => args.logs_dir = PathBuf::from(value("--logs-dir")?),
                 "--data-dir" => args.data_dir = PathBuf::from(value("--data-dir")?),
+                "--cascade-dir" => {
+                    args.cascade_dir = Some(PathBuf::from(value("--cascade-dir")?))
+                }
                 "--tick-ms" => {
                     let v = value("--tick-ms")?;
                     let ms: u64 = v
@@ -107,6 +115,7 @@ pub fn usage() -> String {
          \x20     --static-dir <D>  dashboard static dir (default {})\n\
          \x20     --logs-dir <D>    collector JSONL dir (default {})\n\
          \x20     --data-dir <D>    dashboard data dir, for battery-history.jsonl (default {})\n\
+         \x20     --cascade-dir <D>  also write each tick through the T18 cascade into D (default: off)\n\
          \x20     --tick-ms <N>     sampler tick (default 1000, min 100)\n\
          \x20 -h, --help            this text\n\
          \x20 -V, --version         agent version",
@@ -216,5 +225,16 @@ mod tests {
     #[test]
     fn tick_is_floored() {
         assert_eq!(run(&["--tick-ms", "1"]).tick_ms, 100);
+    }
+
+    #[test]
+    fn cascade_dir_is_off_by_default_and_needs_a_value() {
+        // Default: the agent writes no file at all.
+        assert!(run(&[]).cascade_dir.is_none());
+        assert_eq!(
+            run(&["--cascade-dir", "/tmp/sw-cascade"]).cascade_dir,
+            Some(PathBuf::from("/tmp/sw-cascade"))
+        );
+        assert!(parse(&["--cascade-dir"]).is_err());
     }
 }

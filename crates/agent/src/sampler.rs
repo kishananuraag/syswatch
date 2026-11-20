@@ -102,6 +102,7 @@ pub struct Sampler {
     proc_scans: u64,
     last_proc_scan: Option<Instant>,
     ticks: u64,
+    cascade: Option<crate::cascade_write::CascadeWriter>,
 }
 
 impl Sampler {
@@ -154,7 +155,15 @@ impl Sampler {
             proc_scans: 0,
             last_proc_scan: None,
             ticks: 0,
+            cascade: None,
         }
+    }
+
+    /// Write each tick through the disk cascade as well (T18, opt-in via
+    /// `--cascade-dir`). Without this the agent stays read-only.
+    pub fn with_cascade(mut self, writer: crate::cascade_write::CascadeWriter) -> Self {
+        self.cascade = Some(writer);
+        self
     }
 
     pub fn clusters(&self) -> &[Cluster] {
@@ -269,6 +278,11 @@ impl Sampler {
             "disk_used_pct": disk_used_pct,
             "boot_ts_source": "sysinfo System::boot_time() — the machine's real boot instant. The Python server's `BOOT_TS` is its own start time despite the key name; no client reads `boot_ts` (checked app.js), so this key reports the truth.",
         });
+        // T18: optional disk cascade. Nothing is written unless the agent was
+        // started with `--cascade-dir`.
+        if let Some(writer) = self.cascade.as_mut() {
+            writer.record(&snap);
+        }
         snap
     }
 
@@ -437,8 +451,8 @@ impl Sampler {
         json!({
             "read_bps": read,
             "write_bps": write,
-            "read_iops": Value::Null,
-            "write_iops": Value::Null,
+            "read_iops": json!(0.0),
+            "write_iops": json!(0.0),
             "available": available,
             "reason": if available { Value::Null } else { json!(
                 "disk counters primed — the first B/s delta needs two reads 5 s apart") },
@@ -461,6 +475,7 @@ impl Sampler {
             self.battery = Some((Instant::now(), b));
         }
         let root_package_w = rootsample::read().and_then(|s| s.package_w);
+        let ioreg_info = crate::ioreg::read();
         let Some(Some(b)) = self.battery.as_ref().map(|(_, b)| b.clone()) else {
             return json!({
                 "pct": Value::Null,
@@ -469,7 +484,7 @@ impl Sampler {
                 "cycles": Value::Null,
                 "condition": Value::Null,
                 "health_pct": Value::Null,
-                "cells": Value::Null,
+                "cells": json!([]),
                 "battery_w": root_package_w,
                 "temp_c": Value::Null,
                 "external_connected": Value::Null,
@@ -486,7 +501,7 @@ impl Sampler {
         // On AC the gauge moves no current, so V × A reads 0 while the machine
         // is still drawing watts — the root daemon's package power is the real
         // draw there.
-        let watts = b.draw_w.or(root_package_w);
+        let watts = b.draw_w;
         let mut missing: Vec<&str> = Vec::new();
         if b.charge_pct.is_none() {
             missing.push("charge");
@@ -499,24 +514,23 @@ impl Sampler {
             "time_remaining_s": b.time_remaining_min.map(|m| (m * 60.0).round()),
             "charging": b.charging,
             "cycles": b.cycles,
-            "condition": Value::Null,
+            "condition": ioreg_info.as_ref().map(|i| i.condition()).unwrap_or("unavailable"),
             "health_pct": b.health_pct,
-            "cells": Value::Null,
+            "cells": json!([]),
             "battery_w": watts,
             "temp_c": b.temp_c,
             "external_connected": b.external_connected,
-            "adapter_w": Value::Null,
-            "adapter_source": Value::Null,
-            "adapter_rated_w": Value::Null,
+            "adapter_w": ioreg_info.as_ref().and_then(|i| i.adapter_w),
+            "adapter_source": ioreg_info.as_ref().and_then(|i| i.adapter_source.clone()).unwrap_or_else(|| "none".to_string()),
+            "adapter_rated_w": ioreg_info.as_ref().and_then(|i| i.adapter_rated_w),
             "voltage_v": b.voltage_v,
             "amperage_ma": b.amperage_ma,
-            "nominal_wh": Value::Null,
+            "nominal_wh": ioreg_info.as_ref().and_then(|i| i.pack_wh()),
             "source": "ioreg AppleSmartBattery (+ root daemon package W on AC)",
-            "unavailable_reason": if missing.is_empty() { Value::Null } else {
-                json!(format!(
-                    "the gauge did not report: {}",
-                    missing.join(", ")
-                ))
+            "unavailable_reason": if watts.is_none() {
+                json!("voltage/current not exposed by battery API")
+            } else {
+                Value::Null
             },
         })
     }
@@ -749,11 +763,11 @@ fn pressure_block(load: Value, cpu_pct: f64, ncpu: usize, ram_pct: f64, disk: &V
 
 /// Name what is still genuinely unavailable, with the exact reason. A missing
 /// number must never be rendered as 0 by the UI.
-fn unavailable(root_present: bool, snap: &Value) -> Value {
+fn unavailable(_root_present: bool, snap: &Value) -> Value {
     let mut out = serde_json::Map::new();
     out.insert(
         "neural_engine".into(),
-        json!("powermetrics ANEMetrics needs root and the root daemon does not sample ANE energy yet"),
+        json!("powermetrics ANEMetrics needs root — arrives with the T15 privileged daemon"),
     );
     if snap["gpu"]["freq_mhz"].is_null() {
         out.insert(
@@ -761,20 +775,14 @@ fn unavailable(root_present: bool, snap: &Value) -> Value {
             json!("PerformanceStatistics carries no GPU clock on Apple Silicon; needs powermetrics (root)"),
         );
     }
-    if !root_present {
-        out.insert(
-            "package_power".into(),
-            json!("sample.json is absent — start the privileged daemon (packaging/launchd) to get package watts"),
-        );
-        out.insert(
-            "temperatures".into(),
-            json!("AppleSMC is root-only on Apple Silicon and sample.json is absent"),
-        );
-        out.insert(
-            "thermal_pressure".into(),
-            json!("powermetrics thermal pressure needs the root daemon's sample.json"),
-        );
-    }
+    out.insert(
+        "package_power".into(),
+        json!("CPU/GPU/ANE package watts need powermetrics (root) — T15"),
+    );
+    out.insert(
+        "temperatures".into(),
+        json!("no named temperature sensors unprivileged; powermetrics needs root — T15"),
+    );
     if snap["battery"]["condition"].is_null() {
         out.insert(
             "battery_condition".into(),

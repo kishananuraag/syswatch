@@ -30,6 +30,137 @@ pub fn manifest() -> Value {
     MANIFEST.get_or_init(build).clone()
 }
 
+/// Python-shaped `/api/sensors` payload, built from the agent's own state and
+/// delegated to the dashboard's sensor registry so the key set matches exactly.
+pub fn payload(state: &crate::routes::AppState) -> Value {
+    use std::io::Write;
+    use std::process::{Command, Stdio};
+
+    let snap = state
+        .snapshot
+        .read()
+        .ok()
+        .and_then(|g| g.clone())
+        .unwrap_or_else(|| json!({}));
+
+    let cpu = snap.get("cpu").cloned().unwrap_or_else(|| json!({}));
+    let ram = snap.get("ram").cloned().unwrap_or_else(|| json!({}));
+    let load = snap
+        .get("load")
+        .cloned()
+        .or_else(|| cpu.get("load").cloned())
+        .unwrap_or_else(|| json!({}));
+    let battery = snap.get("battery").cloned().unwrap_or_else(|| json!({}));
+    let gpu = snap.get("gpu").cloned().unwrap_or_else(|| json!({}));
+    let disk = snap.get("disk").cloned().unwrap_or_else(|| json!({}));
+    let disk_io = snap.get("disk_io").cloned().unwrap_or_else(|| json!({}));
+    let pressure = snap.get("pressure").cloned().unwrap_or_else(|| json!({}));
+    let clusters = cpu.get("clusters").cloned().unwrap_or_else(|| json!([]));
+    let volumes = disk.get("volumes").cloned().unwrap_or_else(|| json!([]));
+
+    let root_state = crate::power::root_state();
+    let root_path = syswatch_sensors_macos::rootsample::sample_path()
+        .map(|p| p.display().to_string())
+        .unwrap_or_default();
+    let root_ctx = if root_state.available {
+        json!({
+            "available": true,
+            "age_s": root_state.age_s,
+            "reason": root_state.reason,
+            "path": root_path,
+            "data": root_state.sample.as_ref().map(|s| s.raw.clone()).unwrap_or_else(|| json!({})),
+        })
+    } else {
+        json!({
+            "available": false,
+            "age_s": root_state.age_s,
+            "reason": root_state.reason,
+            "path": root_path,
+            "data": {},
+        })
+    };
+
+    let grant = json!({
+        "endpoint": "/api/permissions/grant?id=package_power",
+        "revoke_endpoint": "/api/permissions/revoke?id=package_power",
+        "endpoint_available": true,
+        "granted": root_state.available,
+        "unlocks": "temperatures · package power · Neural Engine",
+        "detail": "granted through the T15/T19 privileged daemon (syswatch-powerd: powermetrics + AppleSMC, one macOS admin prompt); the dashboard never runs as root and never holds the password",
+        "how": "one admin prompt installs the LaunchDaemon com.barbarian.syswatch.power, which runs the syswatch-powerd binary (/usr/bin/powermetrics -n 1 -i 5000 -f text -s thermal,... plus the AppleSMC reader) and writes sample.json every 15 s",
+    });
+
+    let ctx = json!({
+        "snap": {
+            "cpu": cpu,
+            "ram": ram,
+            "load": load,
+            "battery": battery,
+            "pressure": pressure,
+            "disk": disk,
+        },
+        "gpu": gpu,
+        "disk_io": disk_io,
+        "disk": disk,
+        "clusters": clusters,
+        "volumes": volumes,
+        "battery": battery,
+        "battery_temp_c": battery.get("temp_c").cloned().unwrap_or(Value::Null),
+        "root": root_ctx,
+        "grant": grant,
+    });
+
+    // locate dashboard dir
+    let mut dash = std::path::PathBuf::from("/Users/barbarian/Documents/projects/syswatch/dashboard");
+    for cand in [
+        std::path::PathBuf::from("dashboard"),
+        std::path::PathBuf::from("../dashboard"),
+        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../dashboard"),
+    ] {
+        if cand.join("sensors.py").is_file() {
+            dash = cand;
+            break;
+        }
+    }
+
+    let script = r#"
+import sys, json, time
+sys.path.insert(0, sys.argv[1])
+import sensors
+ctx = json.load(sys.stdin)
+out = sensors.registry(ctx)
+out['generated_ts'] = int(time.time())
+out['mode'] = 'live'
+print(json.dumps(out))
+"#;
+
+    let mut child = match Command::new("python3")
+        .arg("-c")
+        .arg(script)
+        .arg(&dash)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+    {
+        Ok(c) => c,
+        Err(_) => return manifest(),
+    };
+
+    if let Some(mut stdin) = child.stdin.take() {
+        let _ = stdin.write_all(ctx.to_string().as_bytes());
+    }
+    let output = match child.wait_with_output() {
+        Ok(o) => o,
+        Err(_) => return manifest(),
+    };
+    if !output.status.success() {
+        return manifest();
+    }
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    serde_json::from_str(&stdout).unwrap_or_else(|_| manifest())
+}
+
 fn build() -> Value {
     let mut sensors = Vec::new();
     let mut metric_count = 0usize;

@@ -23,6 +23,7 @@
 
 mod analytics;
 mod battery;
+mod cascade_write;
 mod cli;
 mod collector;
 mod consumers;
@@ -99,6 +100,12 @@ async fn serve(args: Args) -> Result<(), String> {
     // 1. First snapshot, synchronously: the port does not open with an empty
     //    slot, so `/api/current` answers on the first request.
     let mut sampler = Sampler::new(args.logs_dir.clone());
+    // T18: only a run that asked for it writes the cascade; the default agent
+    // still owns no file.
+    if let Some(dir) = args.cascade_dir.clone() {
+        sampler = sampler.with_cascade(cascade_write::CascadeWriter::new(dir.clone()));
+        log(&format!("cascade store: writing this agent's samples to {}", dir.display()));
+    }
     let first = sampler.build();
     log(&format!(
         "sampler primed: {} logical CPUs in {} cluster(s), {}% cpu, {} MiB used",

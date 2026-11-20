@@ -17,3 +17,4 @@ dashboard/.sampler.pid
 .DS_Store
 target/
 .venv/
+tests/fixtures/

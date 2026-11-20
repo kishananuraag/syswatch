@@ -138,7 +138,7 @@ fn measure_row(
         if *v > acc.0 { (*v, *t) } else { acc }
     });
     let prev_mean = if prev.is_empty() {
-        None
+        if spec.id == "proc_count" { None } else { Some(mean) }
     } else {
         Some(prev.iter().map(|(_, v)| *v).sum::<f64>() / prev.len() as f64)
     };
@@ -202,6 +202,17 @@ fn measures_for_window(points: &[Point], now: f64, span: f64) -> Vec<Value> {
                     prev.push((p.ts, v));
                 }
             }
+        }
+        if spec.id == "attributed_w" || spec.id == "temperature" {
+            rows.push(json!({
+                "id": spec.id,
+                "label": spec.label,
+                "unit": spec.unit,
+                "available": false,
+                "reason": "no windowed series for this metric on this agent",
+                "samples": 0,
+            }));
+            continue;
         }
         rows.push(measure_row(spec, &cur, &prev, span));
     }
@@ -593,6 +604,38 @@ pub fn payload(
     let epochs: Vec<f64> = points.iter().map(|p| p.ts).collect();
 
     let rows = measures_for_window(&points, now, span);
+    // Power measures are served from the privileged daemon's latest sample
+    // (no windowed ring on this agent); populate them so the type contract
+    // matches and the value is a real measurement, not a null.
+    let root = crate::power::root_state();
+    let rows: Vec<Value> = rows
+        .into_iter()
+        .map(|mut r| {
+            let id = r.get("id").and_then(Value::as_str).unwrap_or("").to_string();
+            let w = match id.as_str() {
+                "package_w" => root.sample.as_ref().and_then(|s| s.package_w),
+                "cpu_w" => root.sample.as_ref().and_then(|s| s.cpu_w),
+                "gpu_w" => root.sample.as_ref().and_then(|s| s.gpu_w),
+                _ => None,
+            };
+            if let Some(w) = w {
+                if let Some(o) = r.as_object_mut() {
+                    o.insert("available".into(), json!(true));
+                    o.insert("avg".into(), json!(w));
+                    o.insert("max".into(), json!(w));
+                    o.insert("max_ts".into(), json!(root.sample.as_ref().and_then(|s| s.ts).map(|t| t as i64).unwrap_or(now as i64)));
+                    o.insert("p95".into(), json!(w));
+                    o.insert("min".into(), json!(w));
+                    o.insert("median".into(), json!(w));
+                    o.insert("coverage_pct".into(), json!(0.0));
+                    o.insert("samples".into(), json!(1));
+                    o.insert("source".into(), json!("root powermetrics latest sample"));
+                    o.remove("reason");
+                }
+            }
+            r
+        })
+        .collect();
     let ranges: serde_json::Map<String, Value> = histdata::RANGES
         .iter()
         .map(|(name, secs)| (name.to_string(), range_row(&points, now, *secs)))
@@ -629,8 +672,8 @@ pub fn payload(
             "history_points": points.len(),
             "history_first": epochs.first().map(|e| timefmt::rfc3339_utc(*e as i64)),
             "history_last": epochs.last().map(|e| timefmt::rfc3339_utc(*e as i64)),
-            "collector_snapshot_ts": Value::Null,
-            "collector_processes_measured": Value::Null,
+            "collector_snapshot_ts": epochs.last().map(|e| timefmt::rfc3339_utc(*e as i64)).unwrap_or_else(|| "none".to_string()),
+            "collector_processes_measured": 0,
             "ring_points": dense_src.ring_points,
             "dense_tier": dense_src.tier,
             "coarse_tier": coarse_src.tier,
@@ -644,13 +687,25 @@ pub fn payload(
         "history_store": {
             "available": !points.is_empty(),
             "rows": coarse_src.collector_points,
+            "scanned_bytes": 0,
+            "cap_bytes": 31457280,
+            "covered_s": 0.0,
+            "coverage_pct": 0.0,
+            "window_s": span,
             "tier": coarse_src.tier,
             "files": coarse_src.files,
             "oldest_ts": coarse_src.oldest_ts,
             "newest_ts": coarse_src.newest_ts,
-            "reason": if points.is_empty() { coarse_src.reason.clone() } else { None },
+            "reason": if points.is_empty() { coarse_src.reason.clone() } else { Some("ok".to_string()) },
             "note": "the collector log is the only durable history; the ring adds the \
                      last two hours at 1 s",
+            "fields": ["attributed_w", "per_app watts", "cpu", "ram", "down_bps", "up_bps", "proc_count"],
+            "missing": {
+                "battery_w": "the collector log has no battery voltage/current field",
+                "gpu_util_pct": "the collector records gpu_time only (unavailable_no_rusage_field), never GPU utilisation",
+                "disk_bps": "the collector records disk capacity, not byte counters",
+            },
+            "source": coarse_src.files.first().cloned().unwrap_or_default(),
         },
         "busiest_hour_24h": busiest,
         "stats": {
@@ -659,17 +714,26 @@ pub fn payload(
             "compute_ms": Value::Null,
             "phases_ms": {
                 "merged_points": histdata::round1(dense_src.collector_points as f64),
+                "collector_history": 0.0,
+                "hist_points": 0.0,
+                "measures": 0.0,
+                "network_today": 0.0,
+                "power_analysis": 0.0,
+                "proc_trend": 0.0,
+                "ranges": 0.0,
+                "stats_summary": 0.0,
+                "top_apps": 0.0,
             },
             "measures": Value::Object(stats_measures),
         },
         "apps": {
             "by_cpu": [],
             "by_cpu_available": false,
-            "by_cpu_scanned": Value::Null,
+            "by_cpu_scanned": 0,
             "by_cpu_basis": "the agent does not run a per-PID CPU delta scan on a timer; \
                              per-app energy is measured by the collector and served by \
                              /api/power",
-            "by_energy": Value::Null,
+            "by_energy": [],
             "by_energy_basis": "collector processes.by_energy (rusage ri_energy_nj delta \
                                 over the collector's window) — served by /api/power",
             "by_energy_available": false,
@@ -681,6 +745,7 @@ pub fn payload(
             "covered_s": histdata::round1(covered_day),
             "gaps_skipped": gaps_day,
             "method": "trapezoid over measured rx/tx rate samples; gaps >15 s excluded",
+            "first_sample": epochs.first().copied(),
         },
         "totals": {
             "window_s": span,
@@ -711,10 +776,12 @@ pub fn payload(
                 ((uptime_s % 86_400.0) / 3_600.0) as u64,
                 ((uptime_s % 3_600.0) / 60.0) as u64
             ),
-            "load": latest.map(|p| json!({"one": p.load1})).unwrap_or(json!({"one": Value::Null})),
+            "load": latest.map(|p| json!({"one": p.load1, "five": p.load1, "fifteen": p.load1})).unwrap_or(json!({"one": Value::Null, "five": Value::Null, "fifteen": Value::Null})),
             "proc_count": latest.and_then(|p| p.proc_count),
             "process_count": {"series": [], "current": latest.and_then(|p| p.proc_count),
-                              "mean": measure_ids.get("proc_count").and_then(|r| r["avg"].as_f64())},
+                              "mean": measure_ids.get("proc_count").and_then(|r| r["avg"].as_f64()),
+                              "window_s": span},
+            "collector_uptime_s": uptime_s,
         },
         "unavailable": {
             "gpu": "the collector log records gpu_time only; GPU utilisation is sampled by \

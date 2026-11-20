@@ -55,11 +55,6 @@ svg.spark { width: 100%; height: 44px; display: block; margin: 4px 0 2px; }
 .corecol { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end; }
 .corecol .track { width: 100%; height: 60px; background: var(--surface-2); border-radius: 4px; display: flex; align-items: flex-end; overflow: hidden; }
 .corecol .fill { width: 100%; background: var(--accent); }
-.tilegrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
-.tile { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px 10px; display: flex; flex-direction: column; gap: 2px; color: var(--text); }
-.tile .label { font-size: 11px; letter-spacing: .09em; color: var(--dim); text-transform: uppercase; }
-.tile .value { font-size: 28px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.15; font-variant-numeric: tabular-nums; }
-.tile .sub { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tvgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
 .tvtile { background: var(--surface); border: 1px solid var(--border); border-radius: 22px; padding: 24px 28px 20px; display: flex; flex-direction: column; gap: 4px; color: var(--text); }
 .tvtile .label { font-size: 22px; letter-spacing: .09em; color: var(--muted); text-transform: uppercase; }
@@ -101,3 +96,109 @@ svg.spark { width: 100%; height: 44px; display: block; margin: 4px 0 2px; }
 .pairbox button.ghost { background: transparent; border: 1px solid var(--border-strong); color: var(--text); }
 h2.section-title { font-size: 26px; font-weight: 600; letter-spacing: -0.01em; margin: 0; }
 p.section-sub { font-size: 13px; color: var(--muted); margin: 4px 0 0; line-height: 1.5; }
+
+/* ============================ T22: tiles =================================
+   One anatomy on every tile: label (top-left, uppercase 11 px), value (24 px
+   tabular) directly under it, 40 px sparkline, 10 px delta.  Focus mode is a
+   class flip on the same DOM — no separate screen, no re-layout of the page.
+   ========================================================================= */
+.tilegrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; align-items: start; }
+@media (max-width: 1180px) { .tilegrid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 860px)  { .tilegrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px)  { .tilegrid { grid-template-columns: minmax(0, 1fr); } }
+
+.tile { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px 10px; display: flex; flex-direction: column; gap: 4px; color: var(--text); text-align: left; font-family: inherit; min-height: 128px; transition: opacity 150ms ease, transform 150ms ease, border-color 150ms ease, background-color 150ms ease; }
+.tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tile .label { font-size: 11px; letter-spacing: .09em; color: var(--dim); text-transform: uppercase; }
+.tile .value { font-size: 28px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.tile .sub { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.tile-head { display: flex; align-items: center; gap: 8px; min-height: 18px; }
+.tile-label { flex: 1; min-width: 0; font-size: 11px; font-weight: 600; letter-spacing: .09em; color: var(--dim); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile-value { font-size: 24px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.tile-unit { font-size: 12px; font-weight: 400; color: var(--dim); margin-left: 3px; }
+.tile-spark { display: block; height: 40px; }
+.tile-spark svg.spark { width: 100%; height: 40px; display: block; }
+.tile-delta { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 10px; color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* every other tile while one is focused: dimmed and inert */
+.tilegrid .tile.is-dimmed { opacity: 0.35; pointer-events: none; }
+
+/* the focused tile: 2 columns x 2 rows, accent border, raised surface */
+.tilegrid .tile.is-focused { grid-column: span 2; grid-row: span 2; border-color: var(--accent); background: #161D22; box-shadow: 0 0 0 1px rgba(110, 231, 200, .25), 0 18px 40px rgba(0, 0, 0, .45); opacity: 1; z-index: 3; cursor: default; }
+.tilegrid .tile.is-focused .tile-value { font-size: 34px; }
+.tilegrid .tile.is-focused .tile-spark svg.spark { height: 48px; }
+
+/* the all-temps tile fills the bottom row of the grid, four compact columns */
+.tilegrid .tile-wide { grid-column: 1 / -1; }
+.tilegrid .tile-wide .temps-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px 24px; }
+.tilegrid .tile-wide .temps-row { justify-content: flex-start; gap: 8px; }
+.tilegrid .tile-wide .temps-row .k { flex: 0 0 auto; }
+.tilegrid .tile-wide.is-focused { grid-column: 1 / -1; grid-row: span 2; }
+.tilegrid .tile.is-focused .temps-list { display: none; }
+
+/* focus panel: full horizontally-scrollable chart + stats side panel */
+.tile-detail { display: none; }
+.tilegrid .tile.is-focused .tile-detail { display: grid; grid-template-columns: minmax(0, 1fr) 236px; gap: 16px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--surface-2); }
+.chart-scroll { min-width: 0; overflow-x: auto; overflow-y: hidden; padding-bottom: 4px; scrollbar-color: var(--border-strong) transparent; }
+.chart-scroll svg.spark-wide { display: block; min-width: 720px; }
+.spark-empty { display: flex; align-items: center; justify-content: center; width: 100%; border: 1px dashed var(--surface-2); border-radius: 8px; color: var(--dim); font-size: 11px; }
+.chart-meta { margin-top: 2px; font-size: 10px; color: var(--dim); font-variant-numeric: tabular-nums; }
+.detail-stats { min-width: 0; max-height: 224px; overflow-y: auto; border-left: 1px solid var(--surface-2); padding-left: 14px; }
+.detail-title { margin-bottom: 4px; font-size: 11px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--dim); }
+.detail-rows .list-row { padding: 4px 0; font-size: 12px; }
+.detail-rows .list-row .k { color: var(--muted); }
+.detail-rows .list-row .v { font-weight: 600; font-variant-numeric: tabular-nums; }
+@media (max-width: 860px) { .tilegrid .tile.is-focused .tile-detail { grid-template-columns: minmax(0, 1fr); } .detail-stats { border-left: 0; padding-left: 0; border-top: 1px solid var(--surface-2); padding-top: 8px; } }
+
+/* hover tooltip: 30 px mini chart of the recent window + its source line */
+.tile-tooltip { display: none; position: absolute; right: 8px; bottom: 8px; width: 168px; padding: 6px 8px; background: #10161A; border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: 0 12px 28px rgba(0, 0, 0, .45); z-index: 4; pointer-events: none; }
+.tilegrid .tile:hover .tile-tooltip { display: block; }
+.tilegrid .tile.is-focused .tile-tooltip,
+.tilegrid .tile.is-dimmed .tile-tooltip { display: none; }
+.tile-tooltip .mini svg.spark { width: 100%; height: 30px; }
+.tile-tooltip .tt-range { font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tile-tooltip .src { font-size: 10px; line-height: 1.35; color: var(--dim); }
+
+/* customize mode — fixed by default, handles only while the gear is on */
+.tile-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
+.tile-controls button { padding: 6px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: inherit; font-size: 13px; cursor: pointer; }
+.tile-controls button.is-on { border-color: var(--accent); color: var(--accent); }
+.controls-note { font-size: 12px; color: var(--dim); }
+.drag-handle { display: none; cursor: grab; color: var(--muted); font-size: 13px; letter-spacing: -2px; user-select: none; }
+.tilegrid .tile[draggable="true"] { cursor: grab; }
+.tile-grid .tile[draggable="true"] .drag-handle,
+.tilegrid .tile[draggable="true"] .drag-handle { display: inline; }
+.tilegrid .tile.is-dragging { opacity: .5; }
+.tilegrid .tile.is-drop-target { border-color: var(--accent); box-shadow: inset 0 0 0 1px rgba(110, 231, 200, .35); }
+.tile-check { display: none; align-items: center; gap: 4px; font-size: 10px; letter-spacing: 0; text-transform: none; color: var(--muted); }
+.tilegrid .tile[draggable="true"] .tile-check { display: inline-flex; }
+.customize-panel { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 10px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+.customize-panel .cfg-title { font-size: 11px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--dim); }
+.cfg-item { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text); }
+.cfg-note { font-size: 11px; color: var(--dim); }
+
+/* temperatures tile: compact CPU die / GPU / SSD / battery list */
+.temps-list { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+.temps-row { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.temps-row .k { color: var(--muted); }
+.temps-row .v { font-weight: 600; }
+
+/* memory pressure: colour + icon, never plain text */
+.pressure { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+.pressure.is-ok { color: var(--accent); background: rgba(110, 231, 200, .10); }
+.pressure.is-warning { color: var(--warn); background: rgba(245, 181, 68, .12); }
+.pressure.is-critical { color: var(--danger); background: rgba(248, 113, 113, .14); }
+
+/* L2 drawer: closed by default, one click to open */
+.l2 { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.l2-toggle { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; padding: 11px 14px; background: transparent; border: 0; color: var(--text); font-family: inherit; font-size: 13px; cursor: pointer; }
+.l2-toggle:hover { background: var(--surface-2); }
+.l2-body { display: flex; flex-direction: column; gap: 14px; padding: 12px 14px 14px; border-top: 1px solid var(--surface-2); }
+.l2-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px 18px; }
+.l2-procs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 24px; }
+.l2-cell { min-width: 0; }
+.l2-title { margin-bottom: 2px; font-size: 11px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--dim); }
+@media (max-width: 1100px) { .l2-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 700px) { .l2-grid, .l2-procs { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (prefers-reduced-motion: reduce) { .tile { transition: none; } }

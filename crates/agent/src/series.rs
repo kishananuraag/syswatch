@@ -25,7 +25,6 @@
 //! 3. **Seconds, not milliseconds.** `from`/`to` and every `ts` are unix
 //!    seconds as floats, matching `time.time()` on the Python side.
 
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};

@@ -86,7 +86,7 @@ pub fn router(state: AppState) -> Router {
         .route("/api/sensors", get(sensors_handler))
         .route("/api/series", get(series_handler))
         .route("/api/consumers", get(consumers_handler))
-        .route("/api/apps", get(consumers_handler))
+        .route("/api/apps", get(apps_handler))
         .route("/api/graph", get(graph_handler))
         .route("/api/history", get(history_handler))
         .route("/api/power", get(power_handler))
@@ -139,8 +139,8 @@ async fn current(State(state): State<AppState>) -> Response {
     }
 }
 
-async fn sensors_handler(State(_state): State<AppState>) -> Json<Value> {
-    Json(crate::sensors::manifest())
+async fn sensors_handler(State(state): State<AppState>) -> Json<Value> {
+    Json(crate::sensors::payload(&state))
 }
 
 #[derive(serde::Deserialize)]
@@ -164,13 +164,27 @@ async fn series_handler(State(state): State<AppState>, Query(q): Query<SeriesQue
 
 #[derive(serde::Deserialize)]
 struct ConsumersQuery {
+    module: Option<String>,
+    range: Option<String>,
+    by: Option<String>,
     offset: Option<usize>,
     limit: Option<usize>,
 }
 
 async fn consumers_handler(State(state): State<AppState>, Query(q): Query<ConsumersQuery>) -> Json<Value> {
     let feed = crate::consumers::ConsumerFeed::new(state.logs_dir.clone());
-    Json(feed.consumers(q.offset.unwrap_or(0), q.limit.unwrap_or(50)))
+    Json(feed.consumers(
+        q.module.as_deref().unwrap_or("cpu"),
+        q.range.as_deref().unwrap_or("1h"),
+        q.offset.unwrap_or(0),
+        q.limit.unwrap_or(50),
+        q.by.as_deref().unwrap_or("process"),
+    ))
+}
+
+async fn apps_handler(State(state): State<AppState>, Query(q): Query<ConsumersQuery>) -> Json<Value> {
+    let feed = crate::consumers::ConsumerFeed::new(state.logs_dir.clone());
+    Json(feed.apps(q.range.as_deref().unwrap_or("1h")))
 }
 
 #[derive(serde::Deserialize)]

@@ -223,7 +223,7 @@ fn app_json(row: &AppRow) -> Value {
 }
 
 /// The battery block: the gauge's own numbers, with the reason for each gap.
-fn battery_block(info: Option<&ioreg::BatteryInfo>, root_package_w: Option<f64>) -> Value {
+fn battery_block(info: Option<&ioreg::BatteryInfo>, _root_package_w: Option<f64>) -> Value {
     let Some(info) = info else {
         return json!({
             "pct": Value::Null,
@@ -233,7 +233,7 @@ fn battery_block(info: Option<&ioreg::BatteryInfo>, root_package_w: Option<f64>)
             "condition": "unavailable",
             "health_pct": Value::Null,
             "cells": Value::Null,
-            "battery_w": root_package_w,
+            "battery_w": Value::Null,
             "temp_c": Value::Null,
             "external_connected": Value::Null,
             "adapter_w": Value::Null,
@@ -249,7 +249,7 @@ fn battery_block(info: Option<&ioreg::BatteryInfo>, root_package_w: Option<f64>)
     let remaining_s = g.time_remaining_min.map(|m| (m * 60.0).round());
     // On AC the gauge moves no current, so V × A reads 0 while the machine is
     // still drawing watts — the root daemon's package power is the real draw.
-    let battery_w = g.draw_w.or(root_package_w);
+    let battery_w = g.draw_w;
     json!({
         "pct": g.charge_pct,
         "time_remaining_s": remaining_s,

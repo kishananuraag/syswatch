@@ -275,7 +275,7 @@ pub fn payload(data_dir: &PathBuf) -> Value {
     let g = &info.gauge;
     let capacity = capacity_block(&info);
     let pack_wh = info.pack_wh();
-    let draw = g.draw_w.or(root_w);
+    let draw = g.draw_w;
     let discharging = g.external_connected == Some(false);
 
     let (life_h, life_note) = match (draw, pack_wh) {
