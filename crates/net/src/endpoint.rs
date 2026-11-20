@@ -74,7 +74,7 @@ impl IrohEndpoint {
     /// network, so tests (and offline demos) can connect two endpoints on one
     /// machine without leaving it.
     pub async fn bind_local(identity: &DeviceIdentity) -> Result<Self, NetError> {
-        Self::bind_builder(builder_for(identity, &[ECHO_ALPN]).local()).await
+        Self::bind_builder(builder_for(identity, &[ECHO_ALPN]).local(0)).await
     }
 
     /// [`IrohEndpoint::bind_local`] for an arbitrary ALPN set.
@@ -82,7 +82,47 @@ impl IrohEndpoint {
         identity: &DeviceIdentity,
         alpns: &[&[u8]],
     ) -> Result<Self, NetError> {
-        Self::bind_builder(builder_for(identity, alpns).local()).await
+        Self::bind_builder(builder_for(identity, alpns).local(0)).await
+    }
+
+    /// [`IrohEndpoint::bind_local_alpns`] on a caller-chosen UDP port.
+    ///
+    /// `port == 0` lets the OS pick, exactly like [`IrohEndpoint::bind_local_alpns`].
+    /// A fixed port is what a *server* needs — the relay in `crates/relay` has to
+    /// be dial-able at a known address, not at whatever port came up. Still
+    /// loopback-only, still relays-off, so this binds nothing off-box.
+    ///
+    /// Panics-free failure mode: a port already in use comes back as
+    /// [`NetError::Iroh`], not a hang.
+    pub async fn bind_local_port(
+        identity: &DeviceIdentity,
+        alpns: &[&[u8]],
+        port: u16,
+    ) -> Result<Self, NetError> {
+        Self::bind_builder(builder_for(identity, alpns).local(port)).await
+    }
+
+    /// Bind every interface on a caller-chosen UDP port, relays and discovery off.
+    ///
+    /// The relay's production posture: it *is* the rendezvous point, so it must
+    /// not depend on someone else's relay to be reachable. Discovery is off for
+    /// the same reason — nobody needs to look its address up, its address is
+    /// published by whoever operates it.
+    pub async fn bind_port(
+        identity: &DeviceIdentity,
+        alpns: &[&[u8]],
+        port: u16,
+    ) -> Result<Self, NetError> {
+        Self::bind_builder(builder_for(identity, alpns).any_interface(port)).await
+    }
+
+    /// The UDP port this endpoint is actually listening on (IPv4 socket).
+    ///
+    /// `None` only if the endpoint reported no bound socket at all. Callers that
+    /// asked for port 0 use this to learn what the OS chose.
+    pub fn bound_port(&self) -> Option<u16> {
+        let (v4, _v6) = self.endpoint.bound_sockets();
+        (v4.port() != 0).then_some(v4.port())
     }
 
     async fn bind_builder(builder: iroh_net::endpoint::Builder) -> Result<Self, NetError> {
@@ -196,13 +236,31 @@ fn builder_for(identity: &DeviceIdentity, alpns: &[&[u8]]) -> iroh_net::endpoint
 /// `bind`; a trait keeps the loopback decision in one place instead of three
 /// builder calls repeated at every bind variant.
 trait LocalOnly {
-    fn local(self) -> Self;
+    fn local(self, port: u16) -> Self;
 }
 
 impl LocalOnly for iroh_net::endpoint::Builder {
-    fn local(self) -> Self {
-        self.bind_addr_v4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 0))
-            .bind_addr_v6(SocketAddrV6::new(Ipv6Addr::LOCALHOST, 0, 0, 0))
+    fn local(self, port: u16) -> Self {
+        self.bind_addr_v4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, port))
+            .bind_addr_v6(SocketAddrV6::new(Ipv6Addr::LOCALHOST, port, 0, 0))
+            .relay_mode(RelayMode::Disabled)
+            .clear_discovery()
+    }
+}
+
+/// Bind every interface, still relays-off and discovery-off (server posture).
+trait AnyInterface {
+    fn any_interface(self, port: u16) -> Self;
+}
+
+impl AnyInterface for iroh_net::endpoint::Builder {
+    fn any_interface(self, port: u16) -> Self {
+        self.bind_addr_v4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, port))
+            // Port 0 for IPv6 on purpose: with an explicit port both sockets ask
+            // for the same number and the second bind loses the race on macOS.
+            // The v4 socket carries the published port; v6 stays ephemeral so a
+            // dual-stack host still has a v6 path.
+            .bind_addr_v6(SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0))
             .relay_mode(RelayMode::Disabled)
             .clear_discovery()
     }

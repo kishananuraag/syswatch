@@ -5,6 +5,7 @@
 
 pub mod endpoint;
 pub mod pairing;
+pub mod relay_client;
 pub mod stream;
 pub mod viewer;
 
@@ -16,6 +17,9 @@ pub use pairing::{
     accept_pairing, accept_pairing_local, start_pairing, start_pairing_local, PairedConnection,
     PairingHandle, PairingSession, PairingState, MAX_PAIRING_ATTEMPTS, MAX_PAIRED_BYTES, PAIR_ALPN,
     PAIR_ALPN_STR,
+};
+pub use relay_client::{
+    RelayClient, RelayLink, RelayStatus, MAX_RELAY_BYTES, RELAY_ALPN, RELAY_ALPN_STR,
 };
 pub use stream::{MetricStream, METRIC_TICK};
 pub use viewer::{Snapshot, ViewerSession};
@@ -301,6 +305,13 @@ pub enum NetError {
     /// A payload on the metric stream was not an `/api/current` snapshot object.
     #[error("invalid snapshot: {0}")]
     BadSnapshot(String),
+    /// A relay declined a registration or a forward request.
+    ///
+    /// The string is the relay's status (`"unknown peer"`, `"busy"`,
+    /// `"bad token"`, …): distinct from [`NetError::Protocol`], which means the
+    /// relay stopped speaking the protocol rather than answering it.
+    #[error("relay rejected the request: {0}")]
+    RelayRejected(String),
 }
 
 #[cfg(test)]

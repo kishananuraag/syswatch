@@ -1,0 +1,24 @@
+[package]
+name = "syswatch-relay"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+
+[dependencies]
+syswatch-net = { path = "../net" }
+iroh-base = "0.28"
+iroh-net = "0.28"
+futures-lite = "2"
+tokio = { version = "1", features = ["full"] }
+thiserror = "2"
+
+[lib]
+name = "syswatch_relay"
+path = "src/lib.rs"
+
+# T30 — the stateless relay as a process.  `syswatch-relayd --port 9443` binds,
+# prints its node id + port, and forwards ciphertext between registered devices
+# until SIGTERM.  No config file, no database, no state directory.
+[[bin]]
+name = "syswatch-relayd"
+path = "src/main.rs"
