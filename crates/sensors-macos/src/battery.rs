@@ -35,6 +35,14 @@ pub struct Battery {
     pub draw_w: Option<f64>,
     pub time_remaining_min: Option<f64>,
     pub temp_c: Option<f64>,
+    // Charge direction and the gauge's own V × A. Exposed (T24) because the
+    // HTTP agent's /api/current carries them as `charging`,
+    // `external_connected`, `voltage_v` and `amperage_ma`; parsing them here
+    // keeps one ioreg parser instead of two.
+    pub charging: Option<bool>,
+    pub external_connected: Option<bool>,
+    pub voltage_v: Option<f64>,
+    pub amperage_ma: Option<f64>,
 }
 
 pub struct BatterySensor {
@@ -144,11 +152,17 @@ pub fn parse_ioreg(text: &str) -> Battery {
     let mv = num(text, "AppleRawBatteryVoltage").or_else(|| num(text, "Voltage"));
     let ma = int(text, "Amperage").or_else(|| int(text, "InstantAmperage"));
     if let (Some(mv), Some(ma)) = (mv, ma) {
+        b.voltage_v = Some(round3(mv / 1000.0));
+        b.amperage_ma = Some(ma as f64);
         let watts = (mv * ma as f64 / 1e6).abs();
         if watts > 0.05 {
             b.draw_w = Some(round2(watts));
         }
     }
+
+    // Flags: printed as `Yes`/`No`. Absent means "not reported", not `false`.
+    b.charging = bool_flag(text, "IsCharging");
+    b.external_connected = bool_flag(text, "ExternalConnected");
 
     let charging = text.contains("\"IsCharging\" = Yes");
     let minutes = if charging {
@@ -179,6 +193,25 @@ fn round1(v: f64) -> f64 {
 
 fn round2(v: f64) -> f64 {
     (v * 100.0).round() / 100.0
+}
+
+fn round3(v: f64) -> f64 {
+    (v * 1000.0).round() / 1000.0
+}
+
+/// `"Key" = Yes` / `"Key" = No` → `Some(bool)`. A missing key is `None`: the
+/// gauge not reporting a flag is not the same as reporting "off".
+fn bool_flag(text: &str, key: &str) -> Option<bool> {
+    let needle = format!("\"{key}\" = ");
+    let idx = text.find(&needle)?;
+    let rest = text[idx + needle.len()..].trim_start();
+    if rest.starts_with("Yes") {
+        Some(true)
+    } else if rest.starts_with("No") {
+        Some(false)
+    } else {
+        None
+    }
 }
 
 fn def(id: &str, label: &str, unit: Unit) -> MetricDef {
@@ -294,6 +327,19 @@ mod tests {
         // 12.403 V × −0.429 A = 5.32 W
         assert_eq!(b.draw_w, Some(5.32));
         assert_eq!(b.temp_c, Some(30.24));
+        // T24: the raw gauge readings travel with the sample.
+        assert_eq!(b.voltage_v, Some(12.403));
+        assert_eq!(b.amperage_ma, Some(-429.0));
+        assert_eq!(b.charging, Some(false));
+        assert_eq!(b.external_connected, Some(false));
+    }
+
+    #[test]
+    fn missing_flags_stay_none() {
+        let b = parse_ioreg(r#""IsCharging" = Yes"#);
+        assert_eq!(b.charging, Some(true));
+        assert_eq!(b.external_connected, None);
+        assert_eq!(b.voltage_v, None);
     }
 
     #[test]

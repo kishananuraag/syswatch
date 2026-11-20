@@ -27,22 +27,79 @@ pub struct TempRow {
     pub c: f64,
 }
 
+/// One cluster's clock and residency (`e_cluster`, `p_cluster`, `per_cpu[]`).
+///
+/// The daemon emits `{freq_mhz, residency_pct}`; either half may be missing and
+/// then stays `None` — a missing clock is not a 0 MHz reading.
+#[derive(Debug, Clone, Default)]
+pub struct ClusterStat {
+    pub freq_mhz: Option<f64>,
+    pub residency_pct: Option<f64>,
+}
+
+impl ClusterStat {
+    pub fn to_json(&self) -> serde_json::Value {
+        let mut out = serde_json::Map::new();
+        if let Some(v) = self.freq_mhz {
+            out.insert("freq_mhz".into(), serde_json::json!(v));
+        }
+        if let Some(v) = self.residency_pct {
+            out.insert("residency_pct".into(), serde_json::json!(v));
+        }
+        serde_json::Value::Object(out)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.freq_mhz.is_none() && self.residency_pct.is_none()
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct RootSample {
     /// Whole-package power (CPU+GPU+ANE) in W, as powermetrics reports it.
     pub package_w: Option<f64>,
     pub cpu_w: Option<f64>,
     pub gpu_w: Option<f64>,
+    /// Neural Engine power — 0 W on a package that is not using it, never None
+    /// when powermetrics reported one.
+    pub ane_w: Option<f64>,
+    pub ane_util_pct: Option<f64>,
     pub thermal_pressure: Option<String>,
     /// Die / pack temperatures aggregated by the daemon.
     pub cpu_avg_c: Option<f64>,
     pub gpu_avg_c: Option<f64>,
     pub ssd_c: Option<f64>,
     pub battery_c: Option<f64>,
+    /// powermetrics' own die readings, present on daemon versions that emit
+    /// them; `None` means "this daemon did not write it", not "0 °C".
+    pub cpu_temp_c: Option<f64>,
+    pub gpu_temp_c: Option<f64>,
+    /// Cluster clocks / residencies (E and P cluster, then per logical CPU).
+    pub e_cluster: Option<ClusterStat>,
+    pub p_cluster: Option<ClusterStat>,
+    pub per_cpu: Vec<ClusterStat>,
+    pub gpu_freq_mhz: Option<f64>,
+    pub gpu_residency_pct: Option<f64>,
+    /// Fan RPMs when the machine has fans (a fanless Air reports none).
+    pub fans_rpm: Vec<f64>,
+    /// The daemon's own SMC reader statistics (`ok`, `mode`, `keys`, …).
+    pub smc: Option<serde_json::Value>,
+    /// Per-cluster temperatures, normalised to `[{label, c}]`.
+    pub cpu_cluster_temps: Vec<(String, f64)>,
     /// Every SMC temperature row the daemon read this cycle.
     pub temps: Vec<TempRow>,
     /// `ts` as written by the daemon (unix seconds).
     pub ts: Option<u64>,
+    /// The parse interval the daemon was started with, in ms.
+    pub sample_ms: Option<u64>,
+    /// Where the numbers came from, as the daemon wrote it.
+    pub source: Option<String>,
+    /// The file as written — lets a new endpoint read a field this struct does
+    /// not model yet without a second reader.
+    pub raw: serde_json::Value,
+    /// Age of the file at read time, in seconds. `None` only for a sample the
+    /// tests constructed by hand.
+    pub age_s: Option<f64>,
 }
 
 impl RootSample {
@@ -82,7 +139,8 @@ fn cell() -> &'static Mutex<Option<Cached>> {
 /// a 1 s tick costs one `stat` and no parse.
 pub fn read() -> Option<RootSample> {
     let path = sample_path()?;
-    let mtime = std::fs::metadata(&path).and_then(|m| m.modified()).ok();
+    let meta = std::fs::metadata(&path).ok();
+    let mtime = meta.as_ref().and_then(|m| m.modified().ok());
 
     if let Ok(guard) = cell().lock()
         && let Some(c) = guard.as_ref()
@@ -93,7 +151,10 @@ pub fn read() -> Option<RootSample> {
     }
 
     let text = std::fs::read_to_string(&path).ok()?;
-    let sample = parse(&text)?;
+    let mut sample = parse(&text)?;
+    sample.age_s = mtime
+        .and_then(|m| SystemTime::now().duration_since(m).ok())
+        .map(|d| d.as_secs_f64());
     if let Ok(mut guard) = cell().lock() {
         *guard = Some(Cached {
             at: Instant::now(),
@@ -129,10 +190,48 @@ pub fn parse(text: &str) -> Option<RootSample> {
         }
     }
 
+    let cluster = |k: &str| obj.get(k).and_then(parse_cluster);
+    let mut per_cpu = Vec::new();
+    if let Some(rows) = obj.get("per_cpu").and_then(Value::as_array) {
+        for row in rows {
+            if let Some(c) = parse_cluster(row) {
+                per_cpu.push(c);
+            }
+        }
+    }
+
+    let mut cpu_cluster_temps = Vec::new();
+    if let Some(rows) = obj.get("cpu_cluster_temps_c").and_then(Value::as_array) {
+        for (i, row) in rows.iter().enumerate() {
+            let label = row
+                .get("label")
+                .or_else(|| row.get("cluster"))
+                .or_else(|| row.get("name"))
+                .and_then(Value::as_str)
+                .map(str::to_string)
+                .unwrap_or_else(|| format!("cluster {}", i + 1));
+            let c = row
+                .get("c")
+                .or_else(|| row.get("temp_c"))
+                .and_then(Value::as_f64);
+            if let Some(c) = c {
+                cpu_cluster_temps.push((label, round2(c)));
+            }
+        }
+    }
+
+    let fans_rpm: Vec<f64> = obj
+        .get("fans_rpm")
+        .and_then(Value::as_array)
+        .map(|rows| rows.iter().filter_map(Value::as_f64).collect())
+        .unwrap_or_default();
+
     Some(RootSample {
         package_w: num("package_w"),
         cpu_w: num("cpu_w"),
         gpu_w: num("gpu_w"),
+        ane_w: num("ane_w"),
+        ane_util_pct: num("ane_util_pct"),
         thermal_pressure: obj
             .get("thermal_pressure")
             .and_then(Value::as_str)
@@ -141,9 +240,36 @@ pub fn parse(text: &str) -> Option<RootSample> {
         gpu_avg_c: num("gpu_avg_c"),
         ssd_c: num("ssd_c"),
         battery_c: num("battery_c"),
+        cpu_temp_c: num("cpu_temp_c"),
+        gpu_temp_c: num("gpu_temp_c"),
+        e_cluster: cluster("e_cluster"),
+        p_cluster: cluster("p_cluster"),
+        per_cpu,
+        gpu_freq_mhz: num("gpu_freq_mhz"),
+        gpu_residency_pct: num("gpu_residency_pct"),
+        fans_rpm,
+        smc: obj.get("smc").cloned(),
+        cpu_cluster_temps,
         temps,
         ts: obj.get("ts").and_then(Value::as_u64),
+        sample_ms: obj.get("sample_ms").and_then(Value::as_u64),
+        source: obj.get("source").and_then(Value::as_str).map(str::to_string),
+        raw: v,
+        age_s: None,
     })
+}
+
+fn parse_cluster(v: &Value) -> Option<ClusterStat> {
+    let obj = v.as_object()?;
+    let c = ClusterStat {
+        freq_mhz: obj.get("freq_mhz").and_then(Value::as_f64),
+        residency_pct: obj.get("residency_pct").and_then(Value::as_f64),
+    };
+    (!c.is_empty()).then_some(c)
+}
+
+fn round2(v: f64) -> f64 {
+    (v * 100.0).round() / 100.0
 }
 
 #[cfg(test)]
@@ -175,5 +301,38 @@ mod tests {
         assert_eq!(s.package_w, None);
         assert_eq!(s.battery_c, None);
         assert!(s.temps.is_empty());
+    }
+
+    #[test]
+    fn parses_clusters_residency_and_smc_block() {
+        // The shape the live daemon wrote on 2026-11-20 (trimmed).
+        let text = r#"{"ts":1795118510,"sample_ms":15000,
+            "source":"powermetrics (root LaunchDaemon com.barbarian.syswatch.power)",
+            "cpu_w":0.437,"gpu_w":0.112,"ane_w":0,"package_w":0.549,
+            "thermal_pressure":"Nominal",
+            "e_cluster":{"freq_mhz":1205,"residency_pct":67.34},
+            "p_cluster":{"freq_mhz":918,"residency_pct":54.4},
+            "gpu_freq_mhz":493,"gpu_residency_pct":14,
+            "per_cpu":[{"freq_mhz":1329,"residency_pct":26.67},
+                       {"freq_mhz":1816,"residency_pct":12.99}],
+            "temps":[{"key":"Tp01","label":"CPU performance core 1 (Tp01)","c":43.04}],
+            "cpu_avg_c":42.75,"gpu_avg_c":41.79,"battery_c":31.9,"ssd_c":35.52,
+            "smc":{"ok":true,"mode":"fast","keys":170}}"#;
+        let s = parse(text).expect("live shape");
+        assert_eq!(s.ane_w, Some(0.0));
+        assert_eq!(s.sample_ms, Some(15_000));
+        assert!(s.source.as_deref().unwrap().starts_with("powermetrics"));
+        let e = s.e_cluster.as_ref().unwrap();
+        assert_eq!(e.freq_mhz, Some(1205.0));
+        assert_eq!(e.residency_pct, Some(67.34));
+        assert_eq!(s.p_cluster.as_ref().unwrap().residency_pct, Some(54.4));
+        assert_eq!(s.per_cpu.len(), 2);
+        assert_eq!(s.gpu_freq_mhz, Some(493.0));
+        assert_eq!(s.gpu_residency_pct, Some(14.0));
+        assert_eq!(s.smc.as_ref().unwrap()["mode"], serde_json::json!("fast"));
+        // The whole file travels too, for fields the struct does not model.
+        assert_eq!(s.raw["samplers"], serde_json::Value::Null);
+        // No fans on this machine → empty, never [0].
+        assert!(s.fans_rpm.is_empty());
     }
 }

@@ -3,310 +3,50 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>syswatch · instrument</title>
-<!-- tab icon: an inline SVG sparkline, so the page needs no extra request -->
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23121317'/%3E%3Cpath d='M2 11 L5 6 L8 9 L11 3 L14 7' fill='none' stroke='%235EEAD4' stroke-width='1.6'/%3E%3C/svg%3E">
+<title>syswatch · dark dashboard</title>
 <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
-
-<!-- ===================================================================== shell
-     Row 0 of the bento: brand · three views · gear · the one range pill.
-     The pill is centred and the bar is sticky at the top, so time is always in
-     reach and there is never a second range control inside a card.
--->
-<header class="shell" id="shell">
-  <div class="shell-left">
-    <div class="brand">syswatch</div>
-    <nav class="tabs" id="tabs" role="tablist" aria-label="views">
-      <button class="tab" role="tab" data-view="instrument" aria-selected="true">Instrument</button>
-      <button class="tab" role="tab" data-view="apps" aria-selected="false">Apps</button>
-      <button class="tab" role="tab" data-view="analytics" aria-selected="false">Analytics</button>
-      <button class="tab gear" role="tab" data-view="settings" aria-selected="false"
-              title="settings · permissions · about · data sources · the knowledge manual"
-              aria-label="settings: permissions, about, data sources, knowledge">⚙<span class="tab-dot" id="permDot" hidden></span></button>
-    </nav>
-  </div>
-
-  <div class="range-pill" id="rangePill" role="group" aria-label="time range for every chart">
-    <button class="range" type="button" data-range="1m" aria-pressed="false">1m</button>
-    <button class="range" type="button" data-range="5m" aria-pressed="false">5m</button>
-    <button class="range" type="button" data-range="15m" aria-pressed="false">15m</button>
-    <button class="range" type="button" data-range="1h" aria-pressed="true">1h</button>
-    <button class="range" type="button" data-range="6h" aria-pressed="false">6h</button>
-    <button class="range" type="button" data-range="1d" aria-pressed="false">1d</button>
-    <button class="range" type="button" data-range="7d" aria-pressed="false">7d</button>
-    <button class="range" type="button" data-range="30d" aria-pressed="false">30d</button>
-    <button class="range" type="button" data-range="1y" aria-pressed="false">1y</button>
-  </div>
-
-  <div class="shell-ctl">
-    <span class="range-hint" id="rangeHint">drag a chart to zoom · double-click resets</span>
-    <div class="live" id="live" title="1 s /api/current poll">
-      <span class="dot"></span><span id="liveLabel">live</span>
-    </div>
+<header class="topbar">
+  <div class="brand">syswatch</div>
+  <nav class="views" id="views" role="tablist" aria-label="screens">
+    <button class="viewbtn active" data-view="overview" role="tab">Overview</button>
+    <button class="viewbtn" data-view="cpu" role="tab">CPU</button>
+    <button class="viewbtn" data-view="analytics" role="tab">Analytics</button>
+    <button class="viewbtn" data-view="devices" role="tab">Devices</button>
+    <button class="viewbtn" data-view="menubar" role="tab">Menubar</button>
+    <button class="viewbtn" data-view="phone" role="tab">Phone</button>
+    <button class="viewbtn" data-view="tv" role="tab">TV</button>
+    <button class="viewbtn" data-view="tokens" role="tab">Tokens</button>
+  </nav>
+  <div class="topbar-right">
+    <label class="range-wrap">Range
+      <select id="rangeSelect">
+        <option value="1m">1m</option>
+        <option value="5m">5m</option>
+        <option value="15m">15m</option>
+        <option value="1h" selected>1h</option>
+        <option value="6h">6h</option>
+        <option value="1d">1d</option>
+        <option value="7d">7d</option>
+        <option value="30d">30d</option>
+        <option value="1y">1y</option>
+      </select>
+    </label>
+    <span id="live" class="live"><span class="dot"></span>live</span>
   </div>
 </header>
 
-<!-- active cross-filters, never invisible — drawn as an overlay so it can never
-     push the bento off the viewport -->
-<div class="chips" id="chips" hidden></div>
-
-<main class="stage" id="stage">
-
-  <!-- ==================================================== L1 · the instrument
-       One viewport, nine glanceable TILES in one 3-column grid (T22). Every
-       tile carries the same grammar: number (24 px, tabular) + 40 px sparkline
-       + one 10 px delta line + one meta line. No bar, no gauge — the sparkline
-       is the only visual at L1.
-       Hover a tile → a 30 px mini chart of the last 60 s + the source line.
-       Click a tile → FOCUS: it takes is-focused (spans 2 × 2) and every other
-       tile takes is-dimmed. The focused tile shows its full chart
-       (horizontally scrollable) with its stats beside it — per-core for CPU,
-       every SMC temperature for Thermal, key measures otherwise. Click it
-       again, click anywhere else, or press Escape → unfocus.
-       Thermal is the exception: it focuses (dims the rest) but never expands.
-       ⚙ settings → customize tiles turns on drag handles + per-tile
-       checkboxes. Order and visibility live in localStorage
-       `syswatch-tile-config`; reset puts the default nine back.
-       The markup is static on purpose: the instrument is the page's spine and
-       it must survive a view switch without a re-render. app.js only fills
-       numbers, order and focus state.
-   -->
-  <section class="bento" id="instrument" role="tabpanel" aria-label="instrument · one viewport">
-
-    <!-- ============================================ row 1 · the tile grid (3 × 3)
-         `data-tile` is what the customize layer reorders; `data-module` is what
-         the data layer and the hover tip key off. Both are needed and both are
-         stable — the ids inside never move.
-    -->
-    <div class="tile-grid" id="tileGrid" role="list" aria-label="nine vitals, right now">
-
-      <!-- ---------------------------------------------------------- CPU -->
-      <article class="tile" id="tile-cpu" data-module="cpu" data-tile="cpu"
-               role="listitem" tabindex="0" aria-expanded="false"
-               aria-label="CPU · click to focus">
-        <span class="tile-grip" title="drag to reorder" aria-hidden="true">⠿</span>
-        <label class="tile-pick" title="show this tile"><input type="checkbox" data-tile-visible="cpu" aria-label="show the CPU tile"></label>
-        <header class="tile-head">
-          <h2>CPU</h2>
-          <span class="tile-num" id="v-cpu">…</span><span class="tile-unit" id="v-cpu-unit">%</span>
-        </header>
-        <canvas class="tile-spark" id="vspark-cpu" height="40" aria-hidden="true"></canvas>
-        <span class="tile-delta" id="v-cpu-delta"></span>
-        <p class="tile-meta" id="v-cpu-meta">waiting for the first 1 s sample</p>
-        <div class="tile-focus" hidden></div>
-      </article>
-
-      <!-- --------------------------------------------------------- Memory -->
-      <article class="tile" id="tile-memory" data-module="memory" data-tile="memory"
-               role="listitem" tabindex="0" aria-expanded="false"
-               aria-label="Memory · click to focus">
-        <span class="tile-grip" title="drag to reorder" aria-hidden="true">⠿</span>
-        <label class="tile-pick" title="show this tile"><input type="checkbox" data-tile-visible="memory" aria-label="show the Memory tile"></label>
-        <header class="tile-head">
-          <h2>Memory</h2>
-          <span class="tile-num" id="v-memory">…</span><span class="tile-unit" id="v-memory-unit">%</span>
-        </header>
-        <canvas class="tile-spark" id="vspark-memory" height="40" aria-hidden="true"></canvas>
-        <span class="tile-delta" id="v-memory-delta"></span>
-        <p class="tile-meta" id="v-memory-meta">waiting for the first 1 s sample</p>
-        <div class="tile-focus" hidden></div>
-      </article>
-
-      <!-- ------------------------------------------------------------ GPU -->
-      <article class="tile" id="tile-gpu" data-module="gpu" data-tile="gpu"
-               role="listitem" tabindex="0" aria-expanded="false"
-               aria-label="GPU · click to focus">
-        <span class="tile-grip" title="drag to reorder" aria-hidden="true">⠿</span>
-        <label class="tile-pick" title="show this tile"><input type="checkbox" data-tile-visible="gpu" aria-label="show the GPU tile"></label>
-        <header class="tile-head">
-          <h2>GPU</h2>
-          <span class="tile-num" id="v-gpu">…</span><span class="tile-unit" id="v-gpu-unit">%</span>
-        </header>
-        <canvas class="tile-spark" id="vspark-gpu" height="40" aria-hidden="true"></canvas>
-        <span class="tile-delta" id="v-gpu-delta"></span>
-        <p class="tile-meta" id="v-gpu-meta">reading IOAccelerator</p>
-        <div class="tile-focus" hidden></div>
-      </article>
-
-      <!-- -------------------------------------------------------- Battery -->
-      <article class="tile" id="tile-battery" data-module="battery" data-tile="battery"
-               role="listitem" tabindex="0" aria-expanded="false"
-               aria-label="Battery · click to focus">
-        <span class="tile-grip" title="drag to reorder" aria-hidden="true">⠿</span>
-        <label class="tile-pick" title="show this tile"><input type="checkbox" data-tile-visible="battery" aria-label="show the Battery tile"></label>
-        <header class="tile-head">
-          <h2>Battery</h2>
-          <span class="tile-num" id="v-battery">…</span><span class="tile-unit" id="v-battery-unit">%</span>
-        </header>
-        <canvas class="tile-spark" id="vspark-battery" height="40" aria-hidden="true"></canvas>
-        <span class="tile-delta" id="v-battery-delta"></span>
-        <p class="tile-meta" id="v-battery-meta">reading AppleSmartBattery</p>
-        <div class="tile-focus" hidden></div>
-      </article>
-
-      <!-- -------------------------------------------------- Package power -->
-      <article class="tile" id="tile-power" data-module="power" data-tile="power"
-               role="listitem" tabindex="0" aria-expanded="false"
-               aria-label="Package power · click to focus">
-        <span class="tile-grip" title="drag to reorder" aria-hidden="true">⠿</span>
-        <label class="tile-pick" title="show this tile"><input type="checkbox" data-tile-visible="power" aria-label="show the Package power tile"></label>
-        <header class="tile-head">
-          <h2>Package power</h2>
-          <span class="tile-num" id="v-power">…</span><span class="tile-unit" id="v-power-unit">W</span>
-        </header>
-        <canvas class="tile-spark" id="vspark-power" height="40" aria-hidden="true"></canvas>
-        <span class="tile-delta" id="v-power-delta"></span>
-        <p class="tile-meta" id="v-power-meta">powermetrics · waiting for root</p>
-        <div class="tile-focus" hidden></div>
-      </article>
-
-      <!-- ------------------------------------------------------- Network -->
-      <article class="tile" id="tile-network" data-module="network" data-tile="network"
-               role="listitem" tabindex="0" aria-expanded="false"
-               aria-label="Network · click to focus">
-        <span class="tile-grip" title="drag to reorder" aria-hidden="true">⠿</span>
-        <label class="tile-pick" title="show this tile"><input type="checkbox" data-tile-visible="network" aria-label="show the Network tile"></label>
-        <header class="tile-head">
-          <h2>Network</h2>
-          <span class="tile-num" id="t-network">…</span>
-        </header>
-        <canvas class="tile-spark" id="vspark-network" height="40" aria-hidden="true"></canvas>
-        <span class="tile-delta" id="t-network-delta"></span>
-        <p class="tile-meta" id="t-network-meta">per-interface byte deltas</p>
-        <div class="tile-focus" hidden></div>
-      </article>
-
-      <!-- ---------------------------------------------------------- Disk -->
-      <article class="tile" id="tile-disk" data-module="disk" data-tile="disk"
-               role="listitem" tabindex="0" aria-expanded="false"
-               aria-label="Disk · click to focus">
-        <span class="tile-grip" title="drag to reorder" aria-hidden="true">⠿</span>
-        <label class="tile-pick" title="show this tile"><input type="checkbox" data-tile-visible="disk" aria-label="show the Disk tile"></label>
-        <header class="tile-head">
-          <h2>Disk</h2>
-          <span class="tile-num" id="t-disk">…</span>
-        </header>
-        <canvas class="tile-spark" id="vspark-disk" height="40" aria-hidden="true"></canvas>
-        <span class="tile-delta" id="t-disk-delta"></span>
-        <p class="tile-meta" id="t-disk-meta">IOBlockStorageDriver deltas</p>
-        <div class="tile-focus" hidden></div>
-      </article>
-
-      <!-- ---------------------------------------------------------- Load -->
-      <article class="tile" id="tile-load" data-module="load" data-tile="load"
-               role="listitem" tabindex="0" aria-expanded="false"
-               aria-label="Load average · click to focus">
-        <span class="tile-grip" title="drag to reorder" aria-hidden="true">⠿</span>
-        <label class="tile-pick" title="show this tile"><input type="checkbox" data-tile-visible="load" aria-label="show the Load tile"></label>
-        <header class="tile-head">
-          <h2>Load</h2>
-          <span class="tile-num" id="v-load">…</span><span class="tile-unit" id="v-load-unit"></span>
-        </header>
-        <canvas class="tile-spark" id="vspark-load" height="40" aria-hidden="true"></canvas>
-        <span class="tile-delta" id="v-load-delta"></span>
-        <p class="tile-meta" id="v-load-meta">getloadavg · 1 min</p>
-        <div class="tile-focus" hidden></div>
-      </article>
-
-      <!-- ------------------------------------------------------- Thermal
-           The one tile that shows EVERY temperature: CPU die, GPU, SSD and the
-           battery pack, compact, under a combined CPU-temperature sparkline.
-           Clicking it focuses (dims the rest) but never expands — the whole
-           point of this tile is that all four fit without opening anything.
-      -->
-      <article class="tile tile--noexpand" id="tile-thermal" data-module="thermal" data-tile="thermal"
-               role="listitem" tabindex="0" aria-expanded="false"
-               aria-label="Thermal · every temperature · click to focus">
-        <span class="tile-grip" title="drag to reorder" aria-hidden="true">⠿</span>
-        <label class="tile-pick" title="show this tile"><input type="checkbox" data-tile-visible="thermal" aria-label="show the Thermal tile"></label>
-        <header class="tile-head">
-          <h2>Thermal</h2>
-          <span class="tile-num" id="t-thermal">…</span>
-        </header>
-        <canvas class="tile-spark" id="vspark-thermal" height="40" aria-hidden="true"></canvas>
-        <span class="tile-delta" id="t-thermal-delta"></span>
-        <p class="tile-meta" id="t-thermal-meta">CPU die — needs root</p>
-        <div class="temp-list" id="thermal-list"></div>
-        <div class="tile-focus" hidden></div>
-      </article>
-
-    </div>
-
-    <!-- L2 for a module, opened from a tile's "full details" button: expands
-         here, in flow, after the grid. Focus mode is the tile itself; L2 is the
-         deeper window (drag-to-zoom chart, consumers, records, findings). -->
-    <div class="l2-slot" id="l2SlotTiles" hidden></div>
-
-  </section>
-
-  <!-- Apps / Analytics / Knowledge render here; the instrument above is never replaced -->
-  <section class="view" id="view" role="tabpanel" aria-live="polite" hidden>
-    <p class="na">loading…</p>
-  </section>
-
+<main class="stage">
+  <section id="view-overview" class="view active"></section>
+  <section id="view-cpu" class="view" hidden></section>
+  <section id="view-analytics" class="view" hidden></section>
+  <section id="view-devices" class="view" hidden></section>
+  <section id="view-menubar" class="view" hidden></section>
+  <section id="view-phone" class="view" hidden></section>
+  <section id="view-tv" class="view" hidden></section>
+  <section id="view-tokens" class="view" hidden></section>
 </main>
-
-<!-- ============================================================ app detail panel
-     The one overlay left in the product: an application's own series, peaks and
-     coverage (opened from the Apps table). Modules are NOT drawers — a tile
-     focuses in place and L2 expands inline, in flow, inside #l2SlotTiles.
--->
-<aside class="l2" id="l2" hidden aria-hidden="true">
-  <div class="l2-backdrop" id="l2Backdrop"></div>
-  <div class="l2-panel" role="dialog" aria-modal="true" aria-labelledby="l2Title">
-    <div class="l2-head">
-      <div>
-        <div class="micro" id="l2Kind">application</div>
-        <h3 id="l2Title">…</h3>
-      </div>
-      <button class="drawer-close" id="l2Close" type="button" aria-label="close application detail">✕</button>
-    </div>
-    <div class="l2-body" id="l2Body"></div>
-  </div>
-</aside>
-
-<!-- drill-through: entity detail without leaving the page -->
-<aside class="drawer" id="drawer" hidden aria-hidden="true">
-  <div class="drawer-panel" role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
-    <div class="drawer-head">
-      <div>
-        <div class="micro" id="drawerKind"></div>
-        <h3 id="drawerTitle"></h3>
-      </div>
-      <button class="drawer-close" id="drawerClose" type="button" aria-label="close detail">✕</button>
-    </div>
-    <div class="drawer-body" id="drawerBody"></div>
-  </div>
-</aside>
-
-<!-- settings: permissions · about · data sources (hash #settings) -->
-<aside class="drawer settings" id="settingsDrawer" hidden aria-hidden="true">
-  <div class="drawer-panel" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
-    <div class="drawer-head">
-      <div>
-        <div class="micro">settings</div>
-        <h3 id="settingsTitle">Permissions, about, data sources</h3>
-      </div>
-      <button class="drawer-close" id="settingsClose" type="button" aria-label="close settings">✕</button>
-    </div>
-    <div class="drawer-body" id="settingsBody"><p class="na">loading…</p></div>
-    <details id="logs">
-      <summary>collector / dashboard events <span id="logCount"></span></summary>
-      <div id="logLines"><span class="na">loading…</span></div>
-    </details>
-  </div>
-</aside>
-
-<div class="toasts" id="toasts" aria-live="polite" aria-atomic="false"></div>
-
-<!-- hover-to-reveal: a 30 px mini chart of the last 60 s + the read behind it.
-     pointer-events:none on purpose — it is a quick look, never a target. -->
-<div class="hover-tip" id="hoverTip" hidden aria-hidden="true">
-  <canvas id="hoverSpark" height="30"></canvas>
-  <div class="hover-src" id="hoverSrc"></div>
-</div>
 
 <script src="/static/chart.umd.min.js"></script>
 <script src="/static/app.js"></script>
