@@ -1,0 +1,454 @@
+<body>
+<div id="dc-root"><div class="sc-host" data-sc-name="syswatch_ui_real"><div data-dc-tpl="3" style="min-height: 100%; background: rgb(13, 16, 19); color: rgb(230, 235, 239); font-family: Inter, system-ui, sans-serif; font-size: 14px; display: flex; flex-direction: column;">
+
+  
+  <header data-dc-tpl="4" style="position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 16px 28px; padding: 14px 24px; border-bottom: 1px solid rgb(28, 36, 42);">
+    <div data-dc-tpl="5" style="display: flex; align-items: center; gap: 14px;">
+      <span data-dc-tpl="6" style="font-size: 18px; font-weight: 600; letter-spacing: -0.01em;">syswatch</span>
+      <button data-dc-tpl="7" aria-label="Switch device or add a device" style="display: flex; align-items: center; gap: 10px; background: rgb(20, 26, 31); border: 1px solid rgb(51, 65, 75); border-radius: 10px; padding: 8px 12px; color: rgb(230, 235, 239); font-size: 14px;">
+        <span data-dc-tpl="8" style="width: 8px; height: 8px; border-radius: 50%; background: rgb(110, 231, 200); display: block;"></span>
+        <span data-dc-tpl="9">This Mac</span>
+        <span data-dc-tpl="10" style="color: rgb(127, 138, 148); font-size: 12px;">5 devices</span>
+        <svg data-dc-tpl="11" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path data-dc-tpl="12" d="M4 6l4 4 4-4" style="fill: none; stroke: rgb(156, 167, 176); stroke-width: 1.5px; stroke-linecap: round; stroke-linejoin: round;"></path></svg>
+      </button>
+    </div>
+    <nav data-dc-tpl="13" style="display: flex; align-items: center; gap: 6px;">
+      <button data-dc-tpl="14" style="background: none; border-width: 0px 0px 2px; border-style: none none solid; border-color: currentcolor currentcolor rgb(110, 231, 200); border-image: none; color: rgb(110, 231, 200); padding: 8px 10px; font-size: 14px; font-weight: 600;">Overview</button>
+      <button data-dc-tpl="15" style="background: none; border-width: 0px 0px 2px; border-style: none none solid; border-color: currentcolor currentcolor transparent; border-image: none; color: rgb(156, 167, 176); padding: 8px 10px; font-size: 14px;">Apps</button>
+      <button data-dc-tpl="16" style="background: none; border-width: 0px 0px 2px; border-style: none none solid; border-color: currentcolor currentcolor transparent; border-image: none; color: rgb(156, 167, 176); padding: 8px 10px; font-size: 14px;">Analytics</button>
+      <button data-dc-tpl="17" aria-label="Settings" style="background: none; border: 0px; padding: 8px 10px; display: flex;">
+        <svg data-dc-tpl="18" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle data-dc-tpl="19" cx="8" cy="8" r="2.2" style="fill: none; stroke: rgb(156, 167, 176); stroke-width: 1.4px;"></circle><path data-dc-tpl="20" d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M12.6 3.4l-1.4 1.4M4.8 11.2l-1.4 1.4" style="fill: none; stroke: rgb(156, 167, 176); stroke-width: 1.4px; stroke-linecap: round;"></path></svg>
+      </button>
+    </nav>
+    <div data-dc-tpl="21" style="display: flex; gap: 2px; background: rgb(20, 26, 31); border: 1px solid rgb(34, 43, 50); border-radius: 999px; padding: 3px; margin: 0px auto;">
+      
+        <button data-dc-tpl="23" style="border: 0px; border-radius: 999px; padding: 6px 12px; font-size: 13px; background: transparent; color: rgb(156, 167, 176); font-weight: 400;"><span class="sc-interp">1m</span></button>
+      
+        <button data-dc-tpl="23" style="border: 0px; border-radius: 999px; padding: 6px 12px; font-size: 13px; background: transparent; color: rgb(156, 167, 176); font-weight: 400;"><span class="sc-interp">5m</span></button>
+      
+        <button data-dc-tpl="23" style="border: 0px; border-radius: 999px; padding: 6px 12px; font-size: 13px; background: transparent; color: rgb(156, 167, 176); font-weight: 400;"><span class="sc-interp">15m</span></button>
+      
+        <button data-dc-tpl="23" style="border: 0px; border-radius: 999px; padding: 6px 12px; font-size: 13px; background: rgb(110, 231, 200); color: rgb(6, 35, 29); font-weight: 600;"><span class="sc-interp">1h</span></button>
+      
+        <button data-dc-tpl="23" style="border: 0px; border-radius: 999px; padding: 6px 12px; font-size: 13px; background: transparent; color: rgb(156, 167, 176); font-weight: 400;"><span class="sc-interp">6h</span></button>
+      
+        <button data-dc-tpl="23" style="border: 0px; border-radius: 999px; padding: 6px 12px; font-size: 13px; background: transparent; color: rgb(156, 167, 176); font-weight: 400;"><span class="sc-interp">1d</span></button>
+      
+        <button data-dc-tpl="23" style="border: 0px; border-radius: 999px; padding: 6px 12px; font-size: 13px; background: transparent; color: rgb(156, 167, 176); font-weight: 400;"><span class="sc-interp">7d</span></button>
+      
+        <button data-dc-tpl="23" style="border: 0px; border-radius: 999px; padding: 6px 12px; font-size: 13px; background: transparent; color: rgb(156, 167, 176); font-weight: 400;"><span class="sc-interp">30d</span></button>
+      
+        <button data-dc-tpl="23" style="border: 0px; border-radius: 999px; padding: 6px 12px; font-size: 13px; background: transparent; color: rgb(156, 167, 176); font-weight: 400;"><span class="sc-interp">1y</span></button>
+      
+    </div>
+    <div data-dc-tpl="24" style="display: flex; align-items: center; gap: 16px; color: rgb(156, 167, 176); font-size: 12px;">
+      <span data-dc-tpl="25"><span class="sc-interp">Private · only your devices can see this</span></span>
+      <span data-dc-tpl="26" style="display: flex; align-items: center; gap: 6px; color: rgb(230, 235, 239);"><span data-dc-tpl="27" style="width: 7px; height: 7px; border-radius: 50%; background: rgb(110, 231, 200); display: block;"></span>live</span>
+    </div>
+
+    
+    
+      <div data-dc-tpl="29" style="position: absolute; top: 58px; left: 112px; z-index: 40; width: 330px; background: rgb(13, 16, 19); border: 1px solid rgb(51, 65, 75); border-radius: 14px; padding: 8px; box-sizing: border-box;">
+        <div data-dc-tpl="30" style="font-size: 11px; letter-spacing: 0.09em; color: rgb(138, 148, 157); text-transform: uppercase; padding: 8px 10px 6px;">Your devices</div>
+        
+          <button data-dc-tpl="32" style="width: 100%; display: flex; align-items: center; gap: 12px; background: rgb(20, 26, 31); border: 0px; border-radius: 10px; padding: 10px; color: rgb(230, 235, 239); text-align: left; opacity: 1;">
+            <span data-dc-tpl="33" style="width: 8px; height: 8px; border-radius: 50%; box-sizing: border-box; display: block; flex: 0 0 8px; background: rgb(110, 231, 200); border: 1.5px solid rgb(110, 231, 200);"></span>
+            <span data-dc-tpl="34" style="flex: 1 1 0%; min-width: 0px;"><span data-dc-tpl="35" style="display: block; font-size: 14px;"><span class="sc-interp">This Mac</span></span><span data-dc-tpl="36" style="display: block; font-size: 12px; color: rgb(156, 167, 176);"><span class="sc-interp">You are here</span></span></span>
+            <svg data-dc-tpl="38" viewBox="0 0 16 16" width="14" height="14" aria-label="Viewing now"><path data-dc-tpl="39" d="M3 8.5l3 3 7-7" style="fill: none; stroke: rgb(110, 231, 200); stroke-width: 1.8px; stroke-linecap: round; stroke-linejoin: round;"></path></svg>
+          </button>
+        
+          <button data-dc-tpl="32" style="width: 100%; display: flex; align-items: center; gap: 12px; background: transparent; border: 0px; border-radius: 10px; padding: 10px; color: rgb(230, 235, 239); text-align: left; opacity: 1;">
+            <span data-dc-tpl="33" style="width: 8px; height: 8px; border-radius: 50%; box-sizing: border-box; display: block; flex: 0 0 8px; background: rgb(110, 231, 200); border: 1.5px solid rgb(110, 231, 200);"></span>
+            <span data-dc-tpl="34" style="flex: 1 1 0%; min-width: 0px;"><span data-dc-tpl="35" style="display: block; font-size: 14px;"><span class="sc-interp">Studio PC</span></span><span data-dc-tpl="36" style="display: block; font-size: 12px; color: rgb(156, 167, 176);"><span class="sc-interp">Online · Windows</span></span></span>
+            
+          </button>
+        
+          <button data-dc-tpl="32" style="width: 100%; display: flex; align-items: center; gap: 12px; background: transparent; border: 0px; border-radius: 10px; padding: 10px; color: rgb(230, 235, 239); text-align: left; opacity: 1;">
+            <span data-dc-tpl="33" style="width: 8px; height: 8px; border-radius: 50%; box-sizing: border-box; display: block; flex: 0 0 8px; background: rgb(110, 231, 200); border: 1.5px solid rgb(110, 231, 200);"></span>
+            <span data-dc-tpl="34" style="flex: 1 1 0%; min-width: 0px;"><span data-dc-tpl="35" style="display: block; font-size: 14px;"><span class="sc-interp">Phone</span></span><span data-dc-tpl="36" style="display: block; font-size: 12px; color: rgb(156, 167, 176);"><span class="sc-interp">Online · Android</span></span></span>
+            
+          </button>
+        
+          <button data-dc-tpl="32" style="width: 100%; display: flex; align-items: center; gap: 12px; background: transparent; border: 0px; border-radius: 10px; padding: 10px; color: rgb(230, 235, 239); text-align: left; opacity: 1;">
+            <span data-dc-tpl="33" style="width: 8px; height: 8px; border-radius: 50%; box-sizing: border-box; display: block; flex: 0 0 8px; background: rgb(110, 231, 200); border: 1.5px solid rgb(110, 231, 200);"></span>
+            <span data-dc-tpl="34" style="flex: 1 1 0%; min-width: 0px;"><span data-dc-tpl="35" style="display: block; font-size: 14px;"><span class="sc-interp">Living-room TV</span></span><span data-dc-tpl="36" style="display: block; font-size: 12px; color: rgb(156, 167, 176);"><span class="sc-interp">Online · Android TV</span></span></span>
+            
+          </button>
+        
+          <button data-dc-tpl="32" style="width: 100%; display: flex; align-items: center; gap: 12px; background: transparent; border: 0px; border-radius: 10px; padding: 10px; color: rgb(230, 235, 239); text-align: left; opacity: 0.6;">
+            <span data-dc-tpl="33" style="width: 8px; height: 8px; border-radius: 50%; box-sizing: border-box; display: block; flex: 0 0 8px; background: transparent; border: 1.5px solid rgb(127, 138, 148);"></span>
+            <span data-dc-tpl="34" style="flex: 1 1 0%; min-width: 0px;"><span data-dc-tpl="35" style="display: block; font-size: 14px;"><span class="sc-interp">Old laptop</span></span><span data-dc-tpl="36" style="display: block; font-size: 12px; color: rgb(156, 167, 176);"><span class="sc-interp">Offline · last seen 3 days ago</span></span></span>
+            
+          </button>
+        
+        <div data-dc-tpl="40" style="height: 1px; background: rgb(28, 36, 42); margin: 6px 4px;"></div>
+        <button data-dc-tpl="41" style="width: 100%; display: flex; align-items: center; gap: 12px; background: none; border: 0px; border-radius: 10px; padding: 10px; color: rgb(110, 231, 200); font-size: 14px; font-weight: 600; text-align: left;"><svg data-dc-tpl="42" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path data-dc-tpl="43" d="M8 3v10M3 8h10" style="fill: none; stroke: rgb(110, 231, 200); stroke-width: 1.7px; stroke-linecap: round;"></path></svg>Add a device</button>
+        <button data-dc-tpl="44" style="width: 100%; background: none; border: 0px; border-radius: 10px; padding: 10px 10px 10px 36px; color: rgb(230, 235, 239); font-size: 14px; text-align: left;">Who can watch this Mac</button>
+        <button data-dc-tpl="45" style="width: 100%; background: none; border: 0px; border-radius: 10px; padding: 10px 10px 10px 36px; color: rgb(230, 235, 239); font-size: 14px; text-align: left;">Rename this device</button>
+      </div>
+    
+  </header>
+
+  <main data-dc-tpl="46" style="padding: 20px 24px 28px; display: flex; flex-direction: column; gap: 16px; max-width: 1600px; width: 100%; box-sizing: border-box; margin: 0px auto;">
+
+    
+    <section data-dc-tpl="47" style="display: flex; flex-wrap: wrap; gap: 16px;">
+      
+        <div data-dc-tpl="49" style="position: relative; flex: 1 1 200px; min-width: 0px; box-sizing: border-box; background: rgb(20, 26, 31); border: 1px solid rgb(34, 43, 50); border-radius: 14px;">
+          <button data-dc-tpl="50" style="width: 100%; box-sizing: border-box; text-align: left; background: none; border: 0px; border-radius: 14px; padding: 16px 18px 14px; display: flex; flex-direction: column; gap: 4px; color: rgb(230, 235, 239);">
+            <span data-dc-tpl="51" style="display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 18px; padding-right: 30px;">
+              <span data-dc-tpl="52" style="font-size: 11px; letter-spacing: 0.09em; color: rgb(138, 148, 157); text-transform: uppercase;"><span class="sc-interp">Processor</span></span>
+              
+            </span>
+            <span data-dc-tpl="57" style="display: flex; align-items: baseline; gap: 6px; font-variant-numeric: tabular-nums;">
+              <span data-dc-tpl="58" style="font-size: 34px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1;"><span class="sc-interp">36.5</span></span>
+              <span data-dc-tpl="59" style="font-size: 14px; color: rgb(127, 138, 148);"><span class="sc-interp">%</span></span>
+            </span>
+            <svg data-dc-tpl="60" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: 44px; display: block; margin: 4px 0px 2px;">
+              <path data-dc-tpl="61" d="M0.00 21.33 L1.12 13.71 L2.25 5.84 L3.37 8.15 L4.49 17.78 L5.62 6.06 L6.74 11.61 L7.87 17.65 L8.99 26.28 L10.11 8.75 L11.24 23.27 L12.36 7.83 L13.48 13.86 L14.61 9.08 L15.73 10.27 L16.85 4.89 L17.98 23.04 L19.10 18.41 L20.22 20.30 L21.35 19.68 L22.47 12.55 L23.60 21.51 L24.72 17.10 L25.84 15.86 L26.97 18.23 L28.09 12.73 L29.21 8.09 L30.34 4.88 L31.46 5.63 L32.58 3.12 L33.71 24.53 L34.83 15.24 L35.96 20.76 L37.08 22.34 L38.20 22.65 L39.33 17.53 L40.45 22.75 L41.57 11.57 L42.70 10.75 L43.82 27.00 L44.94 16.82 L46.07 8.75 L47.19 20.44 L48.31 15.29 L49.44 5.35 L50.56 23.17 L51.69 20.14 L52.81 11.10 L53.93 22.54 L55.06 12.99 L56.18 9.70 L57.30 9.13 L58.43 25.84 L59.55 7.78 L60.67 16.96 L61.80 6.46 L62.92 19.46 L64.04 22.83 L65.17 3.83 L66.29 16.85 L67.42 24.59 L68.54 14.32 L69.66 23.54 L70.79 4.68 L71.91 16.31 L73.03 21.03 L74.16 15.80 L75.28 15.20 L76.40 13.86 L77.53 23.57 L78.65 7.52 L79.78 16.85 L80.90 17.95 L82.02 19.91 L83.15 20.69 L84.27 12.01 L85.39 18.68 L86.52 6.26 L87.64 4.77 L88.76 17.30 L89.89 23.20 L91.01 9.19 L92.13 7.87 L93.26 19.56 L94.38 22.22 L95.51 16.26 L96.63 15.73 L97.75 7.40 L98.88 3.00 L100.00 11.87 L100 30 L0 30 Z" style="fill: rgba(110, 231, 200, 0.09); stroke: none;"></path>
+              <path data-dc-tpl="62" d="M0.00 21.33 L1.12 13.71 L2.25 5.84 L3.37 8.15 L4.49 17.78 L5.62 6.06 L6.74 11.61 L7.87 17.65 L8.99 26.28 L10.11 8.75 L11.24 23.27 L12.36 7.83 L13.48 13.86 L14.61 9.08 L15.73 10.27 L16.85 4.89 L17.98 23.04 L19.10 18.41 L20.22 20.30 L21.35 19.68 L22.47 12.55 L23.60 21.51 L24.72 17.10 L25.84 15.86 L26.97 18.23 L28.09 12.73 L29.21 8.09 L30.34 4.88 L31.46 5.63 L32.58 3.12 L33.71 24.53 L34.83 15.24 L35.96 20.76 L37.08 22.34 L38.20 22.65 L39.33 17.53 L40.45 22.75 L41.57 11.57 L42.70 10.75 L43.82 27.00 L44.94 16.82 L46.07 8.75 L47.19 20.44 L48.31 15.29 L49.44 5.35 L50.56 23.17 L51.69 20.14 L52.81 11.10 L53.93 22.54 L55.06 12.99 L56.18 9.70 L57.30 9.13 L58.43 25.84 L59.55 7.78 L60.67 16.96 L61.80 6.46 L62.92 19.46 L64.04 22.83 L65.17 3.83 L66.29 16.85 L67.42 24.59 L68.54 14.32 L69.66 23.54 L70.79 4.68 L71.91 16.31 L73.03 21.03 L74.16 15.80 L75.28 15.20 L76.40 13.86 L77.53 23.57 L78.65 7.52 L79.78 16.85 L80.90 17.95 L82.02 19.91 L83.15 20.69 L84.27 12.01 L85.39 18.68 L86.52 6.26 L87.64 4.77 L88.76 17.30 L89.89 23.20 L91.01 9.19 L92.13 7.87 L93.26 19.56 L94.38 22.22 L95.51 16.26 L96.63 15.73 L97.75 7.40 L98.88 3.00 L100.00 11.87" style="fill: none; stroke: rgb(110, 231, 200); stroke-width: 1.5px; vector-effect: non-scaling-stroke; stroke-linejoin: round;"></path>
+            </svg>
+            <span data-dc-tpl="63" style="font-size: 12px; color: rgb(156, 167, 176); font-variant-numeric: tabular-nums;"><span class="sc-interp">8 cores</span></span>
+            <span data-dc-tpl="64" style="font-size: 12px; color: rgb(127, 138, 148); font-variant-numeric: tabular-nums;"><span class="sc-interp">12.8 points above last hour</span></span>
+          </button>
+          <button data-dc-tpl="65" aria-label="What is Processor?" style="position: absolute; top: 10px; right: 10px; width: 28px; height: 28px; background: none; border: 0px; padding: 0px; display: flex; align-items: center; justify-content: center;">
+            <span data-dc-tpl="66" style="width: 18px; height: 18px; border-radius: 50%; border: 1px solid rgb(51, 65, 75); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: rgb(156, 167, 176);">?</span>
+          </button>
+          
+        </div>
+      
+        <div data-dc-tpl="49" style="position: relative; flex: 1 1 200px; min-width: 0px; box-sizing: border-box; background: rgb(20, 26, 31); border: 1px solid rgb(94, 74, 36); border-radius: 14px;">
+          <button data-dc-tpl="50" style="width: 100%; box-sizing: border-box; text-align: left; background: none; border: 0px; border-radius: 14px; padding: 16px 18px 14px; display: flex; flex-direction: column; gap: 4px; color: rgb(230, 235, 239);">
+            <span data-dc-tpl="51" style="display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 18px; padding-right: 30px;">
+              <span data-dc-tpl="52" style="font-size: 11px; letter-spacing: 0.09em; color: rgb(138, 148, 157); text-transform: uppercase;"><span class="sc-interp">Memory</span></span>
+              
+                <span data-dc-tpl="54" style="display: flex; align-items: center; gap: 5px; color: rgb(245, 181, 68); font-size: 11px; font-weight: 600;">
+                  <svg data-dc-tpl="55" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path data-dc-tpl="56" d="M8 2.2l6.2 11H1.8z M8 6.6v3 M8 11.6v.1" style="fill: none; stroke: rgb(245, 181, 68); stroke-width: 1.5px; stroke-linejoin: round; stroke-linecap: round;"></path></svg>
+                  <span class="sc-interp">Running low</span>
+                </span>
+              
+            </span>
+            <span data-dc-tpl="57" style="display: flex; align-items: baseline; gap: 6px; font-variant-numeric: tabular-nums;">
+              <span data-dc-tpl="58" style="font-size: 34px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1;"><span class="sc-interp">80.1</span></span>
+              <span data-dc-tpl="59" style="font-size: 14px; color: rgb(127, 138, 148);"><span class="sc-interp">%</span></span>
+            </span>
+            <svg data-dc-tpl="60" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: 44px; display: block; margin: 4px 0px 2px;">
+              <path data-dc-tpl="61" d="M0.00 22.59 L1.12 27.00 L2.25 21.35 L3.37 8.57 L4.49 13.23 L5.62 15.30 L6.74 11.63 L7.87 8.18 L8.99 15.58 L10.11 25.73 L11.24 18.32 L12.36 22.26 L13.48 18.13 L14.61 16.71 L15.73 10.28 L16.85 21.45 L17.98 8.24 L19.10 17.69 L20.22 11.15 L21.35 11.73 L22.47 24.72 L23.60 24.82 L24.72 11.07 L25.84 9.88 L26.97 7.32 L28.09 10.14 L29.21 10.48 L30.34 10.97 L31.46 7.41 L32.58 23.73 L33.71 24.20 L34.83 19.95 L35.96 23.42 L37.08 20.48 L38.20 21.51 L39.33 24.54 L40.45 15.80 L41.57 10.28 L42.70 21.34 L43.82 10.35 L44.94 22.70 L46.07 20.40 L47.19 22.81 L48.31 19.00 L49.44 6.63 L50.56 20.98 L51.69 18.74 L52.81 16.83 L53.93 10.86 L55.06 17.01 L56.18 10.72 L57.30 22.83 L58.43 17.68 L59.55 10.02 L60.67 16.08 L61.80 6.04 L62.92 20.53 L64.04 4.10 L65.17 13.83 L66.29 10.65 L67.42 16.46 L68.54 16.77 L69.66 20.03 L70.79 9.39 L71.91 21.37 L73.03 12.25 L74.16 20.62 L75.28 10.30 L76.40 14.50 L77.53 12.76 L78.65 18.81 L79.78 3.14 L80.90 19.44 L82.02 10.13 L83.15 10.69 L84.27 13.26 L85.39 8.97 L86.52 19.19 L87.64 3.39 L88.76 11.23 L89.89 3.00 L91.01 18.93 L92.13 13.36 L93.26 12.62 L94.38 18.37 L95.51 18.26 L96.63 15.94 L97.75 11.61 L98.88 20.48 L100.00 20.76 L100 30 L0 30 Z" style="fill: rgba(110, 231, 200, 0.09); stroke: none;"></path>
+              <path data-dc-tpl="62" d="M0.00 22.59 L1.12 27.00 L2.25 21.35 L3.37 8.57 L4.49 13.23 L5.62 15.30 L6.74 11.63 L7.87 8.18 L8.99 15.58 L10.11 25.73 L11.24 18.32 L12.36 22.26 L13.48 18.13 L14.61 16.71 L15.73 10.28 L16.85 21.45 L17.98 8.24 L19.10 17.69 L20.22 11.15 L21.35 11.73 L22.47 24.72 L23.60 24.82 L24.72 11.07 L25.84 9.88 L26.97 7.32 L28.09 10.14 L29.21 10.48 L30.34 10.97 L31.46 7.41 L32.58 23.73 L33.71 24.20 L34.83 19.95 L35.96 23.42 L37.08 20.48 L38.20 21.51 L39.33 24.54 L40.45 15.80 L41.57 10.28 L42.70 21.34 L43.82 10.35 L44.94 22.70 L46.07 20.40 L47.19 22.81 L48.31 19.00 L49.44 6.63 L50.56 20.98 L51.69 18.74 L52.81 16.83 L53.93 10.86 L55.06 17.01 L56.18 10.72 L57.30 22.83 L58.43 17.68 L59.55 10.02 L60.67 16.08 L61.80 6.04 L62.92 20.53 L64.04 4.10 L65.17 13.83 L66.29 10.65 L67.42 16.46 L68.54 16.77 L69.66 20.03 L70.79 9.39 L71.91 21.37 L73.03 12.25 L74.16 20.62 L75.28 10.30 L76.40 14.50 L77.53 12.76 L78.65 18.81 L79.78 3.14 L80.90 19.44 L82.02 10.13 L83.15 10.69 L84.27 13.26 L85.39 8.97 L86.52 19.19 L87.64 3.39 L88.76 11.23 L89.89 3.00 L91.01 18.93 L92.13 13.36 L93.26 12.62 L94.38 18.37 L95.51 18.26 L96.63 15.94 L97.75 11.61 L98.88 20.48 L100.00 20.76" style="fill: none; stroke: rgb(110, 231, 200); stroke-width: 1.5px; vector-effect: non-scaling-stroke; stroke-linejoin: round;"></path>
+            </svg>
+            <span data-dc-tpl="63" style="font-size: 12px; color: rgb(156, 167, 176); font-variant-numeric: tabular-nums;"><span class="sc-interp">3.2 GB of 8 GB in use</span></span>
+            <span data-dc-tpl="64" style="font-size: 12px; color: rgb(127, 138, 148); font-variant-numeric: tabular-nums;"><span class="sc-interp">Same as last hour</span></span>
+          </button>
+          <button data-dc-tpl="65" aria-label="What is Memory?" style="position: absolute; top: 10px; right: 10px; width: 28px; height: 28px; background: none; border: 0px; padding: 0px; display: flex; align-items: center; justify-content: center;">
+            <span data-dc-tpl="66" style="width: 18px; height: 18px; border-radius: 50%; border: 1px solid rgb(51, 65, 75); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: rgb(156, 167, 176);">?</span>
+          </button>
+          
+        </div>
+      
+        <div data-dc-tpl="49" style="position: relative; flex: 1 1 200px; min-width: 0px; box-sizing: border-box; background: rgb(20, 26, 31); border: 1px solid rgb(34, 43, 50); border-radius: 14px;">
+          <button data-dc-tpl="50" style="width: 100%; box-sizing: border-box; text-align: left; background: none; border: 0px; border-radius: 14px; padding: 16px 18px 14px; display: flex; flex-direction: column; gap: 4px; color: rgb(230, 235, 239);">
+            <span data-dc-tpl="51" style="display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 18px; padding-right: 30px;">
+              <span data-dc-tpl="52" style="font-size: 11px; letter-spacing: 0.09em; color: rgb(138, 148, 157); text-transform: uppercase;"><span class="sc-interp">Graphics</span></span>
+              
+            </span>
+            <span data-dc-tpl="57" style="display: flex; align-items: baseline; gap: 6px; font-variant-numeric: tabular-nums;">
+              <span data-dc-tpl="58" style="font-size: 34px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1;"><span class="sc-interp">16.0</span></span>
+              <span data-dc-tpl="59" style="font-size: 14px; color: rgb(127, 138, 148);"><span class="sc-interp">%</span></span>
+            </span>
+            <svg data-dc-tpl="60" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: 44px; display: block; margin: 4px 0px 2px;">
+              <path data-dc-tpl="61" d="M0.00 24.20 L1.12 22.19 L2.25 27.00 L3.37 25.74 L4.49 21.60 L5.62 18.30 L6.74 19.34 L7.87 17.47 L8.99 17.66 L10.11 22.62 L11.24 22.94 L12.36 12.18 L13.48 21.28 L14.61 21.59 L15.73 14.91 L16.85 24.31 L17.98 17.66 L19.10 18.31 L20.22 11.13 L21.35 21.16 L22.47 13.11 L23.60 20.77 L24.72 18.45 L25.84 23.32 L26.97 18.52 L28.09 16.22 L29.21 21.94 L30.34 12.25 L31.46 21.75 L32.58 16.11 L33.71 18.18 L34.83 10.76 L35.96 9.94 L37.08 13.94 L38.20 12.23 L39.33 13.03 L40.45 10.07 L41.57 22.65 L42.70 11.76 L43.82 18.12 L44.94 22.59 L46.07 11.35 L47.19 17.94 L48.31 15.07 L49.44 17.41 L50.56 19.90 L51.69 9.26 L52.81 16.95 L53.93 8.87 L55.06 10.27 L56.18 14.92 L57.30 14.33 L58.43 13.78 L59.55 8.84 L60.67 12.85 L61.80 12.77 L62.92 20.82 L64.04 16.88 L65.17 10.05 L66.29 17.06 L67.42 6.52 L68.54 11.95 L69.66 17.96 L70.79 15.19 L71.91 14.39 L73.03 17.11 L74.16 19.51 L75.28 11.21 L76.40 11.80 L77.53 16.49 L78.65 6.01 L79.78 18.11 L80.90 10.68 L82.02 14.48 L83.15 8.90 L84.27 7.80 L85.39 10.39 L86.52 9.97 L87.64 3.34 L88.76 5.23 L89.89 17.56 L91.01 11.06 L92.13 3.84 L93.26 3.00 L94.38 6.78 L95.51 3.56 L96.63 12.45 L97.75 10.42 L98.88 10.13 L100.00 6.15 L100 30 L0 30 Z" style="fill: rgba(110, 231, 200, 0.09); stroke: none;"></path>
+              <path data-dc-tpl="62" d="M0.00 24.20 L1.12 22.19 L2.25 27.00 L3.37 25.74 L4.49 21.60 L5.62 18.30 L6.74 19.34 L7.87 17.47 L8.99 17.66 L10.11 22.62 L11.24 22.94 L12.36 12.18 L13.48 21.28 L14.61 21.59 L15.73 14.91 L16.85 24.31 L17.98 17.66 L19.10 18.31 L20.22 11.13 L21.35 21.16 L22.47 13.11 L23.60 20.77 L24.72 18.45 L25.84 23.32 L26.97 18.52 L28.09 16.22 L29.21 21.94 L30.34 12.25 L31.46 21.75 L32.58 16.11 L33.71 18.18 L34.83 10.76 L35.96 9.94 L37.08 13.94 L38.20 12.23 L39.33 13.03 L40.45 10.07 L41.57 22.65 L42.70 11.76 L43.82 18.12 L44.94 22.59 L46.07 11.35 L47.19 17.94 L48.31 15.07 L49.44 17.41 L50.56 19.90 L51.69 9.26 L52.81 16.95 L53.93 8.87 L55.06 10.27 L56.18 14.92 L57.30 14.33 L58.43 13.78 L59.55 8.84 L60.67 12.85 L61.80 12.77 L62.92 20.82 L64.04 16.88 L65.17 10.05 L66.29 17.06 L67.42 6.52 L68.54 11.95 L69.66 17.96 L70.79 15.19 L71.91 14.39 L73.03 17.11 L74.16 19.51 L75.28 11.21 L76.40 11.80 L77.53 16.49 L78.65 6.01 L79.78 18.11 L80.90 10.68 L82.02 14.48 L83.15 8.90 L84.27 7.80 L85.39 10.39 L86.52 9.97 L87.64 3.34 L88.76 5.23 L89.89 17.56 L91.01 11.06 L92.13 3.84 L93.26 3.00 L94.38 6.78 L95.51 3.56 L96.63 12.45 L97.75 10.42 L98.88 10.13 L100.00 6.15" style="fill: none; stroke: rgb(110, 231, 200); stroke-width: 1.5px; vector-effect: non-scaling-stroke; stroke-linejoin: round;"></path>
+            </svg>
+            <span data-dc-tpl="63" style="font-size: 12px; color: rgb(156, 167, 176); font-variant-numeric: tabular-nums;"><span class="sc-interp">drawing the screen: 15 %</span></span>
+            <span data-dc-tpl="64" style="font-size: 12px; color: rgb(127, 138, 148); font-variant-numeric: tabular-nums;"><span class="sc-interp">6.5 points above last hour</span></span>
+          </button>
+          <button data-dc-tpl="65" aria-label="What is Graphics?" style="position: absolute; top: 10px; right: 10px; width: 28px; height: 28px; background: none; border: 0px; padding: 0px; display: flex; align-items: center; justify-content: center;">
+            <span data-dc-tpl="66" style="width: 18px; height: 18px; border-radius: 50%; border: 1px solid rgb(51, 65, 75); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: rgb(156, 167, 176);">?</span>
+          </button>
+          
+        </div>
+      
+        <div data-dc-tpl="49" style="position: relative; flex: 1 1 200px; min-width: 0px; box-sizing: border-box; background: rgb(20, 26, 31); border: 1px solid rgb(34, 43, 50); border-radius: 14px;">
+          <button data-dc-tpl="50" style="width: 100%; box-sizing: border-box; text-align: left; background: none; border: 0px; border-radius: 14px; padding: 16px 18px 14px; display: flex; flex-direction: column; gap: 4px; color: rgb(230, 235, 239);">
+            <span data-dc-tpl="51" style="display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 18px; padding-right: 30px;">
+              <span data-dc-tpl="52" style="font-size: 11px; letter-spacing: 0.09em; color: rgb(138, 148, 157); text-transform: uppercase;"><span class="sc-interp">Battery</span></span>
+              
+            </span>
+            <span data-dc-tpl="57" style="display: flex; align-items: baseline; gap: 6px; font-variant-numeric: tabular-nums;">
+              <span data-dc-tpl="58" style="font-size: 34px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1;"><span class="sc-interp">97</span></span>
+              <span data-dc-tpl="59" style="font-size: 14px; color: rgb(127, 138, 148);"><span class="sc-interp">%</span></span>
+            </span>
+            <svg data-dc-tpl="60" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: 44px; display: block; margin: 4px 0px 2px;">
+              <path data-dc-tpl="61" d="M0.00 4.29 L1.12 3.00 L2.25 5.40 L3.37 5.14 L4.49 4.78 L5.62 3.27 L6.74 3.63 L7.87 5.56 L8.99 6.76 L10.11 5.84 L11.24 5.48 L12.36 8.04 L13.48 7.30 L14.61 7.97 L15.73 7.18 L16.85 7.15 L17.98 9.36 L19.10 7.54 L20.22 6.54 L21.35 6.47 L22.47 6.95 L23.60 6.85 L24.72 9.17 L25.84 9.94 L26.97 8.44 L28.09 8.24 L29.21 8.18 L30.34 11.77 L31.46 10.15 L32.58 11.22 L33.71 12.40 L34.83 11.91 L35.96 10.34 L37.08 11.95 L38.20 10.34 L39.33 12.49 L40.45 12.78 L41.57 12.87 L42.70 13.32 L43.82 12.38 L44.94 14.78 L46.07 14.19 L47.19 12.27 L48.31 15.74 L49.44 16.09 L50.56 16.31 L51.69 16.96 L52.81 15.24 L53.93 14.71 L55.06 14.71 L56.18 18.11 L57.30 18.24 L58.43 16.16 L59.55 18.30 L60.67 15.62 L61.80 16.45 L62.92 16.27 L64.04 16.32 L65.17 17.85 L66.29 19.90 L67.42 17.42 L68.54 20.16 L69.66 20.76 L70.79 18.51 L71.91 20.51 L73.03 21.51 L74.16 21.63 L75.28 21.67 L76.40 19.65 L77.53 22.37 L78.65 19.88 L79.78 21.30 L80.90 21.55 L82.02 23.07 L83.15 22.69 L84.27 23.07 L85.39 21.33 L86.52 24.74 L87.64 25.41 L88.76 24.40 L89.89 24.79 L91.01 23.58 L92.13 25.33 L93.26 23.42 L94.38 23.60 L95.51 24.40 L96.63 25.23 L97.75 25.27 L98.88 27.00 L100.00 25.44 L100 30 L0 30 Z" style="fill: rgba(110, 231, 200, 0.09); stroke: none;"></path>
+              <path data-dc-tpl="62" d="M0.00 4.29 L1.12 3.00 L2.25 5.40 L3.37 5.14 L4.49 4.78 L5.62 3.27 L6.74 3.63 L7.87 5.56 L8.99 6.76 L10.11 5.84 L11.24 5.48 L12.36 8.04 L13.48 7.30 L14.61 7.97 L15.73 7.18 L16.85 7.15 L17.98 9.36 L19.10 7.54 L20.22 6.54 L21.35 6.47 L22.47 6.95 L23.60 6.85 L24.72 9.17 L25.84 9.94 L26.97 8.44 L28.09 8.24 L29.21 8.18 L30.34 11.77 L31.46 10.15 L32.58 11.22 L33.71 12.40 L34.83 11.91 L35.96 10.34 L37.08 11.95 L38.20 10.34 L39.33 12.49 L40.45 12.78 L41.57 12.87 L42.70 13.32 L43.82 12.38 L44.94 14.78 L46.07 14.19 L47.19 12.27 L48.31 15.74 L49.44 16.09 L50.56 16.31 L51.69 16.96 L52.81 15.24 L53.93 14.71 L55.06 14.71 L56.18 18.11 L57.30 18.24 L58.43 16.16 L59.55 18.30 L60.67 15.62 L61.80 16.45 L62.92 16.27 L64.04 16.32 L65.17 17.85 L66.29 19.90 L67.42 17.42 L68.54 20.16 L69.66 20.76 L70.79 18.51 L71.91 20.51 L73.03 21.51 L74.16 21.63 L75.28 21.67 L76.40 19.65 L77.53 22.37 L78.65 19.88 L79.78 21.30 L80.90 21.55 L82.02 23.07 L83.15 22.69 L84.27 23.07 L85.39 21.33 L86.52 24.74 L87.64 25.41 L88.76 24.40 L89.89 24.79 L91.01 23.58 L92.13 25.33 L93.26 23.42 L94.38 23.60 L95.51 24.40 L96.63 25.23 L97.75 25.27 L98.88 27.00 L100.00 25.44" style="fill: none; stroke: rgb(110, 231, 200); stroke-width: 1.5px; vector-effect: non-scaling-stroke; stroke-linejoin: round;"></path>
+            </svg>
+            <span data-dc-tpl="63" style="font-size: 12px; color: rgb(156, 167, 176); font-variant-numeric: tabular-nums;"><span class="sc-interp">10 h 29 min left · using 4.5 W</span></span>
+            <span data-dc-tpl="64" style="font-size: 12px; color: rgb(127, 138, 148); font-variant-numeric: tabular-nums;"><span class="sc-interp">Holds 82 % of its original charge</span></span>
+          </button>
+          <button data-dc-tpl="65" aria-label="What is Battery?" style="position: absolute; top: 10px; right: 10px; width: 28px; height: 28px; background: none; border: 0px; padding: 0px; display: flex; align-items: center; justify-content: center;">
+            <span data-dc-tpl="66" style="width: 18px; height: 18px; border-radius: 50%; border: 1px solid rgb(51, 65, 75); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: rgb(156, 167, 176);">?</span>
+          </button>
+          
+        </div>
+      
+        <div data-dc-tpl="49" style="position: relative; flex: 1 1 200px; min-width: 0px; box-sizing: border-box; background: rgb(20, 26, 31); border: 1px solid rgb(34, 43, 50); border-radius: 14px;">
+          <button data-dc-tpl="50" style="width: 100%; box-sizing: border-box; text-align: left; background: none; border: 0px; border-radius: 14px; padding: 16px 18px 14px; display: flex; flex-direction: column; gap: 4px; color: rgb(230, 235, 239);">
+            <span data-dc-tpl="51" style="display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 18px; padding-right: 30px;">
+              <span data-dc-tpl="52" style="font-size: 11px; letter-spacing: 0.09em; color: rgb(138, 148, 157); text-transform: uppercase;"><span class="sc-interp">Power use</span></span>
+              
+            </span>
+            <span data-dc-tpl="57" style="display: flex; align-items: baseline; gap: 6px; font-variant-numeric: tabular-nums;">
+              <span data-dc-tpl="58" style="font-size: 34px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1;"><span class="sc-interp">1.37</span></span>
+              <span data-dc-tpl="59" style="font-size: 14px; color: rgb(127, 138, 148);"><span class="sc-interp">W</span></span>
+            </span>
+            <svg data-dc-tpl="60" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: 44px; display: block; margin: 4px 0px 2px;">
+              <path data-dc-tpl="61" d="M0.00 26.17 L1.12 27.00 L2.25 26.62 L3.37 22.53 L4.49 23.43 L5.62 24.19 L6.74 22.90 L7.87 15.02 L8.99 25.89 L10.11 16.19 L11.24 23.46 L12.36 26.61 L13.48 26.32 L14.61 14.26 L15.73 15.27 L16.85 23.10 L17.98 13.03 L19.10 17.57 L20.22 17.05 L21.35 23.10 L22.47 26.63 L23.60 21.32 L24.72 19.35 L25.84 14.76 L26.97 19.02 L28.09 17.83 L29.21 17.27 L30.34 14.71 L31.46 18.74 L32.58 24.40 L33.71 14.89 L34.83 21.20 L35.96 15.93 L37.08 23.61 L38.20 19.87 L39.33 25.05 L40.45 15.40 L41.57 17.87 L42.70 11.18 L43.82 14.27 L44.94 14.67 L46.07 11.97 L47.19 18.56 L48.31 15.91 L49.44 11.59 L50.56 21.35 L51.69 16.63 L52.81 23.19 L53.93 14.47 L55.06 7.86 L56.18 20.14 L57.30 19.38 L58.43 7.34 L59.55 8.73 L60.67 11.42 L61.80 18.28 L62.92 11.13 L64.04 16.58 L65.17 14.55 L66.29 21.14 L67.42 9.56 L68.54 12.10 L69.66 19.05 L70.79 9.64 L71.91 16.40 L73.03 19.26 L74.16 11.98 L75.28 10.68 L76.40 12.94 L77.53 16.75 L78.65 4.94 L79.78 8.91 L80.90 8.35 L82.02 15.35 L83.15 18.98 L84.27 6.46 L85.39 7.75 L86.52 15.13 L87.64 18.02 L88.76 13.94 L89.89 4.67 L91.01 16.03 L92.13 17.54 L93.26 8.18 L94.38 14.67 L95.51 11.80 L96.63 15.36 L97.75 16.59 L98.88 3.00 L100.00 4.74 L100 30 L0 30 Z" style="fill: rgba(110, 231, 200, 0.09); stroke: none;"></path>
+              <path data-dc-tpl="62" d="M0.00 26.17 L1.12 27.00 L2.25 26.62 L3.37 22.53 L4.49 23.43 L5.62 24.19 L6.74 22.90 L7.87 15.02 L8.99 25.89 L10.11 16.19 L11.24 23.46 L12.36 26.61 L13.48 26.32 L14.61 14.26 L15.73 15.27 L16.85 23.10 L17.98 13.03 L19.10 17.57 L20.22 17.05 L21.35 23.10 L22.47 26.63 L23.60 21.32 L24.72 19.35 L25.84 14.76 L26.97 19.02 L28.09 17.83 L29.21 17.27 L30.34 14.71 L31.46 18.74 L32.58 24.40 L33.71 14.89 L34.83 21.20 L35.96 15.93 L37.08 23.61 L38.20 19.87 L39.33 25.05 L40.45 15.40 L41.57 17.87 L42.70 11.18 L43.82 14.27 L44.94 14.67 L46.07 11.97 L47.19 18.56 L48.31 15.91 L49.44 11.59 L50.56 21.35 L51.69 16.63 L52.81 23.19 L53.93 14.47 L55.06 7.86 L56.18 20.14 L57.30 19.38 L58.43 7.34 L59.55 8.73 L60.67 11.42 L61.80 18.28 L62.92 11.13 L64.04 16.58 L65.17 14.55 L66.29 21.14 L67.42 9.56 L68.54 12.10 L69.66 19.05 L70.79 9.64 L71.91 16.40 L73.03 19.26 L74.16 11.98 L75.28 10.68 L76.40 12.94 L77.53 16.75 L78.65 4.94 L79.78 8.91 L80.90 8.35 L82.02 15.35 L83.15 18.98 L84.27 6.46 L85.39 7.75 L86.52 15.13 L87.64 18.02 L88.76 13.94 L89.89 4.67 L91.01 16.03 L92.13 17.54 L93.26 8.18 L94.38 14.67 L95.51 11.80 L96.63 15.36 L97.75 16.59 L98.88 3.00 L100.00 4.74" style="fill: none; stroke: rgb(110, 231, 200); stroke-width: 1.5px; vector-effect: non-scaling-stroke; stroke-linejoin: round;"></path>
+            </svg>
+            <span data-dc-tpl="63" style="font-size: 12px; color: rgb(156, 167, 176); font-variant-numeric: tabular-nums;"><span class="sc-interp">Processor 1.1 · Graphics 0.3 W</span></span>
+            <span data-dc-tpl="64" style="font-size: 12px; color: rgb(127, 138, 148); font-variant-numeric: tabular-nums;"><span class="sc-interp">Updates every 15 seconds</span></span>
+          </button>
+          <button data-dc-tpl="65" aria-label="What is Power use?" style="position: absolute; top: 10px; right: 10px; width: 28px; height: 28px; background: none; border: 0px; padding: 0px; display: flex; align-items: center; justify-content: center;">
+            <span data-dc-tpl="66" style="width: 18px; height: 18px; border-radius: 50%; border: 1px solid rgb(51, 65, 75); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: rgb(156, 167, 176);">?</span>
+          </button>
+          
+        </div>
+      
+        <div data-dc-tpl="49" style="position: relative; flex: 1 1 200px; min-width: 0px; box-sizing: border-box; background: rgb(20, 26, 31); border: 1px solid rgb(34, 43, 50); border-radius: 14px;">
+          <button data-dc-tpl="50" style="width: 100%; box-sizing: border-box; text-align: left; background: none; border: 0px; border-radius: 14px; padding: 16px 18px 14px; display: flex; flex-direction: column; gap: 4px; color: rgb(230, 235, 239);">
+            <span data-dc-tpl="51" style="display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 18px; padding-right: 30px;">
+              <span data-dc-tpl="52" style="font-size: 11px; letter-spacing: 0.09em; color: rgb(138, 148, 157); text-transform: uppercase;"><span class="sc-interp">Workload</span></span>
+              
+            </span>
+            <span data-dc-tpl="57" style="display: flex; align-items: baseline; gap: 6px; font-variant-numeric: tabular-nums;">
+              <span data-dc-tpl="58" style="font-size: 34px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1;"><span class="sc-interp">3.68</span></span>
+              <span data-dc-tpl="59" style="font-size: 14px; color: rgb(127, 138, 148);"><span class="sc-interp"></span></span>
+            </span>
+            <svg data-dc-tpl="60" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: 44px; display: block; margin: 4px 0px 2px;">
+              <path data-dc-tpl="61" d="M0.00 16.81 L1.12 7.56 L2.25 15.79 L3.37 8.87 L4.49 14.53 L5.62 6.25 L6.74 3.00 L7.87 14.80 L8.99 17.45 L10.11 19.65 L11.24 21.38 L12.36 17.96 L13.48 3.29 L14.61 11.20 L15.73 19.26 L16.85 20.73 L17.98 6.41 L19.10 8.82 L20.22 14.24 L21.35 11.56 L22.47 19.45 L23.60 8.79 L24.72 13.54 L25.84 19.68 L26.97 19.77 L28.09 19.61 L29.21 20.24 L30.34 17.26 L31.46 17.41 L32.58 8.15 L33.71 19.70 L34.83 19.73 L35.96 16.51 L37.08 9.43 L38.20 10.07 L39.33 13.64 L40.45 9.89 L41.57 17.14 L42.70 19.76 L43.82 14.29 L44.94 24.40 L46.07 22.48 L47.19 10.96 L48.31 8.34 L49.44 17.21 L50.56 22.09 L51.69 9.12 L52.81 15.96 L53.93 18.50 L55.06 23.58 L56.18 18.76 L57.30 17.98 L58.43 20.23 L59.55 14.66 L60.67 16.88 L61.80 11.67 L62.92 16.33 L64.04 11.64 L65.17 20.15 L66.29 8.29 L67.42 13.65 L68.54 7.87 L69.66 23.39 L70.79 13.51 L71.91 21.64 L73.03 25.32 L74.16 8.78 L75.28 7.15 L76.40 24.37 L77.53 21.79 L78.65 7.28 L79.78 11.51 L80.90 10.63 L82.02 21.71 L83.15 14.74 L84.27 22.96 L85.39 17.12 L86.52 19.71 L87.64 25.08 L88.76 21.93 L89.89 18.59 L91.01 15.15 L92.13 11.78 L93.26 19.69 L94.38 16.85 L95.51 27.00 L96.63 13.83 L97.75 18.34 L98.88 17.22 L100.00 11.53 L100 30 L0 30 Z" style="fill: rgba(110, 231, 200, 0.09); stroke: none;"></path>
+              <path data-dc-tpl="62" d="M0.00 16.81 L1.12 7.56 L2.25 15.79 L3.37 8.87 L4.49 14.53 L5.62 6.25 L6.74 3.00 L7.87 14.80 L8.99 17.45 L10.11 19.65 L11.24 21.38 L12.36 17.96 L13.48 3.29 L14.61 11.20 L15.73 19.26 L16.85 20.73 L17.98 6.41 L19.10 8.82 L20.22 14.24 L21.35 11.56 L22.47 19.45 L23.60 8.79 L24.72 13.54 L25.84 19.68 L26.97 19.77 L28.09 19.61 L29.21 20.24 L30.34 17.26 L31.46 17.41 L32.58 8.15 L33.71 19.70 L34.83 19.73 L35.96 16.51 L37.08 9.43 L38.20 10.07 L39.33 13.64 L40.45 9.89 L41.57 17.14 L42.70 19.76 L43.82 14.29 L44.94 24.40 L46.07 22.48 L47.19 10.96 L48.31 8.34 L49.44 17.21 L50.56 22.09 L51.69 9.12 L52.81 15.96 L53.93 18.50 L55.06 23.58 L56.18 18.76 L57.30 17.98 L58.43 20.23 L59.55 14.66 L60.67 16.88 L61.80 11.67 L62.92 16.33 L64.04 11.64 L65.17 20.15 L66.29 8.29 L67.42 13.65 L68.54 7.87 L69.66 23.39 L70.79 13.51 L71.91 21.64 L73.03 25.32 L74.16 8.78 L75.28 7.15 L76.40 24.37 L77.53 21.79 L78.65 7.28 L79.78 11.51 L80.90 10.63 L82.02 21.71 L83.15 14.74 L84.27 22.96 L85.39 17.12 L86.52 19.71 L87.64 25.08 L88.76 21.93 L89.89 18.59 L91.01 15.15 L92.13 11.78 L93.26 19.69 L94.38 16.85 L95.51 27.00 L96.63 13.83 L97.75 18.34 L98.88 17.22 L100.00 11.53" style="fill: none; stroke: rgb(110, 231, 200); stroke-width: 1.5px; vector-effect: non-scaling-stroke; stroke-linejoin: round;"></path>
+            </svg>
+            <span data-dc-tpl="63" style="font-size: 12px; color: rgb(156, 167, 176); font-variant-numeric: tabular-nums;"><span class="sc-interp">last 5 min 3.13 · last 15 min 2.84</span></span>
+            <span data-dc-tpl="64" style="font-size: 12px; color: rgb(127, 138, 148); font-variant-numeric: tabular-nums;"><span class="sc-interp">Slightly lighter than last hour</span></span>
+          </button>
+          <button data-dc-tpl="65" aria-label="What is Workload?" style="position: absolute; top: 10px; right: 10px; width: 28px; height: 28px; background: none; border: 0px; padding: 0px; display: flex; align-items: center; justify-content: center;">
+            <span data-dc-tpl="66" style="width: 18px; height: 18px; border-radius: 50%; border: 1px solid rgb(51, 65, 75); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: rgb(156, 167, 176);">?</span>
+          </button>
+          
+        </div>
+      
+    </section>
+
+    
+    <section data-dc-tpl="73" style="display: flex; flex-wrap: wrap; gap: 16px;">
+      
+        <div data-dc-tpl="75" style="position: relative; flex: 1 1 360px; min-width: 0px; box-sizing: border-box; background: rgb(20, 26, 31); border: 1px solid rgb(34, 43, 50); border-radius: 14px;">
+          <button data-dc-tpl="76" style="width: 100%; box-sizing: border-box; text-align: left; background: none; border: 0px; border-radius: 14px; padding: 16px 18px 14px; display: flex; flex-direction: column; gap: 4px; color: rgb(230, 235, 239);">
+            <span data-dc-tpl="77" style="display: flex; justify-content: space-between; align-items: center; padding-right: 30px; min-height: 18px;">
+              <span data-dc-tpl="78" style="font-size: 11px; letter-spacing: 0.09em; color: rgb(138, 148, 157); text-transform: uppercase;"><span class="sc-interp">Network traffic</span></span>
+              <svg data-dc-tpl="79" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path data-dc-tpl="80" d="M6 3.5L10.5 8 6 12.5" style="fill: none; stroke: rgb(127, 138, 148); stroke-width: 1.5px; stroke-linecap: round; stroke-linejoin: round;"></path></svg>
+            </span>
+            <span data-dc-tpl="81" style="display: flex; align-items: baseline; gap: 6px; font-variant-numeric: tabular-nums;">
+              <span data-dc-tpl="82" style="font-size: 34px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1;"><span class="sc-interp">10.1</span></span>
+              <span data-dc-tpl="83" style="font-size: 14px; color: rgb(127, 138, 148);"><span class="sc-interp">KB/s</span></span>
+            </span>
+            <svg data-dc-tpl="84" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: 120px; display: block; margin: 8px 0px 4px;">
+              <path data-dc-tpl="85" d="M0 7.5H100 M0 15H100 M0 22.5H100" style="fill: none; stroke: rgb(30, 39, 46); stroke-width: 1px; vector-effect: non-scaling-stroke;"></path>
+              <path data-dc-tpl="86" d="M0.00 26.74 L0.84 26.19 L1.68 26.73 L2.52 26.06 L3.36 26.21 L4.20 26.61 L5.04 26.45 L5.88 26.76 L6.72 26.95 L7.56 26.04 L8.40 26.93 L9.24 26.82 L10.08 26.45 L10.92 26.29 L11.76 26.84 L12.61 26.07 L13.45 26.48 L14.29 26.57 L15.13 26.03 L15.97 26.92 L16.81 25.92 L17.65 26.61 L18.49 26.17 L19.33 26.33 L20.17 26.34 L21.01 26.48 L21.85 25.92 L22.69 26.51 L23.53 3.00 L24.37 19.55 L25.21 26.69 L26.05 26.12 L26.89 26.80 L27.73 26.55 L28.57 25.92 L29.41 26.74 L30.25 26.02 L31.09 26.69 L31.93 26.49 L32.77 26.67 L33.61 26.02 L34.45 26.41 L35.29 26.57 L36.13 26.34 L36.97 26.89 L37.82 26.83 L38.66 26.91 L39.50 26.85 L40.34 26.14 L41.18 26.68 L42.02 26.89 L42.86 26.50 L43.70 26.83 L44.54 26.61 L45.38 27.00 L46.22 26.26 L47.06 26.73 L47.90 26.67 L48.74 26.38 L49.58 26.22 L50.42 26.56 L51.26 26.29 L52.10 26.84 L52.94 26.75 L53.78 26.90 L54.62 26.38 L55.46 25.99 L56.30 25.96 L57.14 26.90 L57.98 26.47 L58.82 26.83 L59.66 26.50 L60.50 26.91 L61.34 26.31 L62.18 26.13 L63.03 26.17 L63.87 26.70 L64.71 26.38 L65.55 25.97 L66.39 26.94 L67.23 26.25 L68.07 26.02 L68.91 26.96 L69.75 26.38 L70.59 25.92 L71.43 26.64 L72.27 25.91 L73.11 26.69 L73.95 26.78 L74.79 25.92 L75.63 26.78 L76.47 26.87 L77.31 26.20 L78.15 26.33 L78.99 26.37 L79.83 26.11 L80.67 26.80 L81.51 26.90 L82.35 26.09 L83.19 26.57 L84.03 26.62 L84.87 26.61 L85.71 26.29 L86.55 26.69 L87.39 26.86 L88.24 26.40 L89.08 26.36 L89.92 26.79 L90.76 26.85 L91.60 26.66 L92.44 26.27 L93.28 26.54 L94.12 26.38 L94.96 26.75 L95.80 26.78 L96.64 26.71 L97.48 26.69 L98.32 26.01 L99.16 26.84 L100.00 26.32 L100 30 L0 30 Z" style="fill: rgba(110, 231, 200, 0.09); stroke: none;"></path>
+              <path data-dc-tpl="87" d="M0.00 26.87 L0.84 26.55 L1.68 26.49 L2.52 26.51 L3.36 26.79 L4.20 26.94 L5.04 26.49 L5.88 26.93 L6.72 26.69 L7.56 26.49 L8.40 26.72 L9.24 26.54 L10.08 26.74 L10.92 26.67 L11.76 26.79 L12.61 26.83 L13.45 26.66 L14.29 26.78 L15.13 26.91 L15.97 26.47 L16.81 26.63 L17.65 26.50 L18.49 26.77 L19.33 26.63 L20.17 26.61 L21.01 26.50 L21.85 26.68 L22.69 26.88 L23.53 26.83 L24.37 26.54 L25.21 26.52 L26.05 26.48 L26.89 26.92 L27.73 26.99 L28.57 26.80 L29.41 26.91 L30.25 26.59 L31.09 26.95 L31.93 26.80 L32.77 26.76 L33.61 26.66 L34.45 26.77 L35.29 26.48 L36.13 26.92 L36.97 26.61 L37.82 26.91 L38.66 26.74 L39.50 26.52 L40.34 26.96 L41.18 26.65 L42.02 26.84 L42.86 26.83 L43.70 26.89 L44.54 26.93 L45.38 26.56 L46.22 26.96 L47.06 26.89 L47.90 26.52 L48.74 26.52 L49.58 26.81 L50.42 26.98 L51.26 26.89 L52.10 26.92 L52.94 26.79 L53.78 26.77 L54.62 26.88 L55.46 26.65 L56.30 26.90 L57.14 26.53 L57.98 26.92 L58.82 26.55 L59.66 26.47 L60.50 26.76 L61.34 26.84 L62.18 26.97 L63.03 26.83 L63.87 26.59 L64.71 26.77 L65.55 26.48 L66.39 26.51 L67.23 26.76 L68.07 26.47 L68.91 26.91 L69.75 26.89 L70.59 26.80 L71.43 26.85 L72.27 26.59 L73.11 26.99 L73.95 26.56 L74.79 26.64 L75.63 26.57 L76.47 26.91 L77.31 26.56 L78.15 26.78 L78.99 26.93 L79.83 26.59 L80.67 26.83 L81.51 26.63 L82.35 26.63 L83.19 26.80 L84.03 26.60 L84.87 26.52 L85.71 26.97 L86.55 26.72 L87.39 26.45 L88.24 26.92 L89.08 26.50 L89.92 26.76 L90.76 26.80 L91.60 26.90 L92.44 26.89 L93.28 26.94 L94.12 26.69 L94.96 26.98 L95.80 26.93 L96.64 27.00 L97.48 26.53 L98.32 26.48 L99.16 26.71 L100.00 26.50" style="fill: none; stroke: rgb(138, 151, 163); stroke-width: 1.4px; vector-effect: non-scaling-stroke; stroke-linejoin: round;"></path>
+              <path data-dc-tpl="88" d="M0.00 26.74 L0.84 26.19 L1.68 26.73 L2.52 26.06 L3.36 26.21 L4.20 26.61 L5.04 26.45 L5.88 26.76 L6.72 26.95 L7.56 26.04 L8.40 26.93 L9.24 26.82 L10.08 26.45 L10.92 26.29 L11.76 26.84 L12.61 26.07 L13.45 26.48 L14.29 26.57 L15.13 26.03 L15.97 26.92 L16.81 25.92 L17.65 26.61 L18.49 26.17 L19.33 26.33 L20.17 26.34 L21.01 26.48 L21.85 25.92 L22.69 26.51 L23.53 3.00 L24.37 19.55 L25.21 26.69 L26.05 26.12 L26.89 26.80 L27.73 26.55 L28.57 25.92 L29.41 26.74 L30.25 26.02 L31.09 26.69 L31.93 26.49 L32.77 26.67 L33.61 26.02 L34.45 26.41 L35.29 26.57 L36.13 26.34 L36.97 26.89 L37.82 26.83 L38.66 26.91 L39.50 26.85 L40.34 26.14 L41.18 26.68 L42.02 26.89 L42.86 26.50 L43.70 26.83 L44.54 26.61 L45.38 27.00 L46.22 26.26 L47.06 26.73 L47.90 26.67 L48.74 26.38 L49.58 26.22 L50.42 26.56 L51.26 26.29 L52.10 26.84 L52.94 26.75 L53.78 26.90 L54.62 26.38 L55.46 25.99 L56.30 25.96 L57.14 26.90 L57.98 26.47 L58.82 26.83 L59.66 26.50 L60.50 26.91 L61.34 26.31 L62.18 26.13 L63.03 26.17 L63.87 26.70 L64.71 26.38 L65.55 25.97 L66.39 26.94 L67.23 26.25 L68.07 26.02 L68.91 26.96 L69.75 26.38 L70.59 25.92 L71.43 26.64 L72.27 25.91 L73.11 26.69 L73.95 26.78 L74.79 25.92 L75.63 26.78 L76.47 26.87 L77.31 26.20 L78.15 26.33 L78.99 26.37 L79.83 26.11 L80.67 26.80 L81.51 26.90 L82.35 26.09 L83.19 26.57 L84.03 26.62 L84.87 26.61 L85.71 26.29 L86.55 26.69 L87.39 26.86 L88.24 26.40 L89.08 26.36 L89.92 26.79 L90.76 26.85 L91.60 26.66 L92.44 26.27 L93.28 26.54 L94.12 26.38 L94.96 26.75 L95.80 26.78 L96.64 26.71 L97.48 26.69 L98.32 26.01 L99.16 26.84 L100.00 26.32" style="fill: none; stroke: rgb(110, 231, 200); stroke-width: 1.5px; vector-effect: non-scaling-stroke; stroke-linejoin: round;"></path>
+            </svg>
+            <span data-dc-tpl="89" style="display: flex; justify-content: space-between; font-size: 11px; color: rgb(127, 138, 148); font-variant-numeric: tabular-nums;"><span data-dc-tpl="90">22:50</span><span data-dc-tpl="91">23:10</span><span data-dc-tpl="92">23:30</span><span data-dc-tpl="93">now</span></span>
+            <span data-dc-tpl="94" style="display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 12px; color: rgb(156, 167, 176); margin-top: 6px; font-variant-numeric: tabular-nums;">
+              <span data-dc-tpl="95" style="display: flex; align-items: center; gap: 6px;"><span data-dc-tpl="96" style="width: 12px; height: 2px; background: rgb(110, 231, 200); display: block;"></span><span class="sc-interp">Downloading 10.1 KB/s</span></span>
+              <span data-dc-tpl="97" style="display: flex; align-items: center; gap: 6px;"><span data-dc-tpl="98" style="width: 12px; height: 2px; background: rgb(138, 151, 163); display: block;"></span><span class="sc-interp">Uploading 3.1 KB/s</span></span>
+            </span>
+          </button>
+          <button data-dc-tpl="99" aria-label="What is Network traffic?" style="position: absolute; top: 10px; right: 10px; width: 28px; height: 28px; background: none; border: 0px; padding: 0px; display: flex; align-items: center; justify-content: center;">
+            <span data-dc-tpl="100" style="width: 18px; height: 18px; border-radius: 50%; border: 1px solid rgb(51, 65, 75); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: rgb(156, 167, 176);">?</span>
+          </button>
+        </div>
+      
+        <div data-dc-tpl="75" style="position: relative; flex: 1 1 360px; min-width: 0px; box-sizing: border-box; background: rgb(20, 26, 31); border: 1px solid rgb(34, 43, 50); border-radius: 14px;">
+          <button data-dc-tpl="76" style="width: 100%; box-sizing: border-box; text-align: left; background: none; border: 0px; border-radius: 14px; padding: 16px 18px 14px; display: flex; flex-direction: column; gap: 4px; color: rgb(230, 235, 239);">
+            <span data-dc-tpl="77" style="display: flex; justify-content: space-between; align-items: center; padding-right: 30px; min-height: 18px;">
+              <span data-dc-tpl="78" style="font-size: 11px; letter-spacing: 0.09em; color: rgb(138, 148, 157); text-transform: uppercase;"><span class="sc-interp">Storage activity</span></span>
+              <svg data-dc-tpl="79" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path data-dc-tpl="80" d="M6 3.5L10.5 8 6 12.5" style="fill: none; stroke: rgb(127, 138, 148); stroke-width: 1.5px; stroke-linecap: round; stroke-linejoin: round;"></path></svg>
+            </span>
+            <span data-dc-tpl="81" style="display: flex; align-items: baseline; gap: 6px; font-variant-numeric: tabular-nums;">
+              <span data-dc-tpl="82" style="font-size: 34px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1;"><span class="sc-interp">1.1</span></span>
+              <span data-dc-tpl="83" style="font-size: 14px; color: rgb(127, 138, 148);"><span class="sc-interp">MB/s</span></span>
+            </span>
+            <svg data-dc-tpl="84" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: 120px; display: block; margin: 8px 0px 4px;">
+              <path data-dc-tpl="85" d="M0 7.5H100 M0 15H100 M0 22.5H100" style="fill: none; stroke: rgb(30, 39, 46); stroke-width: 1px; vector-effect: non-scaling-stroke;"></path>
+              <path data-dc-tpl="86" d="M0.00 26.16 L0.84 24.59 L1.68 25.29 L2.52 24.56 L3.36 26.60 L4.20 24.72 L5.04 25.87 L5.88 26.59 L6.72 26.55 L7.56 24.43 L8.40 24.45 L9.24 25.48 L10.08 25.66 L10.92 25.44 L11.76 25.31 L12.61 24.91 L13.45 24.90 L14.29 25.74 L15.13 25.61 L15.97 24.73 L16.81 25.87 L17.65 25.59 L18.49 26.50 L19.33 24.97 L20.17 24.77 L21.01 25.88 L21.85 26.30 L22.69 24.43 L23.53 26.43 L24.37 25.66 L25.21 25.65 L26.05 26.46 L26.89 26.45 L27.73 25.27 L28.57 24.92 L29.41 26.52 L30.25 25.30 L31.09 24.56 L31.93 26.09 L32.77 25.34 L33.61 25.89 L34.45 25.98 L35.29 25.52 L36.13 25.06 L36.97 25.99 L37.82 26.34 L38.66 24.68 L39.50 25.26 L40.34 25.83 L41.18 24.40 L42.02 25.59 L42.86 26.30 L43.70 26.12 L44.54 24.57 L45.38 25.35 L46.22 25.57 L47.06 26.31 L47.90 25.70 L48.74 26.30 L49.58 26.71 L50.42 25.10 L51.26 24.95 L52.10 26.38 L52.94 25.45 L53.78 24.99 L54.62 24.66 L55.46 25.85 L56.30 25.77 L57.14 25.23 L57.98 24.79 L58.82 25.54 L59.66 20.66 L60.50 17.92 L61.34 15.49 L62.18 14.93 L63.03 11.59 L63.87 11.13 L64.71 8.94 L65.55 5.34 L66.39 3.86 L67.23 3.00 L68.07 5.40 L68.91 6.87 L69.75 7.66 L70.59 9.85 L71.43 13.16 L72.27 14.50 L73.11 15.95 L73.95 18.77 L74.79 21.01 L75.63 25.89 L76.47 26.23 L77.31 24.69 L78.15 26.24 L78.99 25.13 L79.83 25.09 L80.67 25.69 L81.51 26.09 L82.35 25.49 L83.19 25.93 L84.03 26.48 L84.87 25.82 L85.71 25.63 L86.55 24.97 L87.39 24.71 L88.24 24.91 L89.08 26.17 L89.92 25.12 L90.76 25.35 L91.60 26.53 L92.44 24.99 L93.28 24.80 L94.12 25.40 L94.96 24.73 L95.80 26.58 L96.64 24.98 L97.48 25.70 L98.32 24.40 L99.16 24.60 L100.00 26.26 L100 30 L0 30 Z" style="fill: rgba(110, 231, 200, 0.09); stroke: none;"></path>
+              <path data-dc-tpl="87" d="M0.00 26.58 L0.84 26.84 L1.68 25.29 L2.52 27.00 L3.36 26.34 L4.20 26.39 L5.04 26.61 L5.88 25.46 L6.72 26.85 L7.56 26.83 L8.40 25.47 L9.24 25.43 L10.08 26.30 L10.92 26.22 L11.76 26.89 L12.61 25.77 L13.45 26.85 L14.29 26.22 L15.13 26.88 L15.97 25.91 L16.81 25.70 L17.65 25.94 L18.49 26.25 L19.33 25.45 L20.17 26.88 L21.01 26.58 L21.85 26.34 L22.69 26.10 L23.53 25.71 L24.37 25.80 L25.21 25.90 L26.05 26.27 L26.89 26.93 L27.73 25.55 L28.57 26.01 L29.41 25.38 L30.25 26.45 L31.09 26.01 L31.93 26.89 L32.77 25.46 L33.61 25.58 L34.45 26.84 L35.29 25.90 L36.13 25.56 L36.97 26.10 L37.82 26.73 L38.66 25.84 L39.50 26.81 L40.34 25.30 L41.18 25.77 L42.02 25.49 L42.86 25.44 L43.70 26.38 L44.54 26.16 L45.38 26.70 L46.22 26.45 L47.06 26.82 L47.90 26.02 L48.74 25.63 L49.58 26.49 L50.42 25.28 L51.26 25.47 L52.10 26.75 L52.94 25.51 L53.78 26.32 L54.62 26.65 L55.46 25.57 L56.30 25.49 L57.14 26.68 L57.98 26.71 L58.82 25.52 L59.66 26.11 L60.50 26.15 L61.34 26.50 L62.18 25.51 L63.03 26.97 L63.87 26.76 L64.71 25.28 L65.55 25.32 L66.39 26.36 L67.23 25.72 L68.07 26.64 L68.91 26.05 L69.75 26.86 L70.59 26.06 L71.43 26.84 L72.27 26.95 L73.11 26.60 L73.95 25.90 L74.79 25.81 L75.63 26.13 L76.47 26.49 L77.31 26.97 L78.15 25.62 L78.99 25.63 L79.83 25.97 L80.67 25.78 L81.51 26.23 L82.35 26.62 L83.19 26.51 L84.03 25.51 L84.87 26.27 L85.71 26.50 L86.55 26.62 L87.39 25.97 L88.24 26.99 L89.08 25.47 L89.92 26.70 L90.76 26.95 L91.60 25.53 L92.44 25.57 L93.28 26.61 L94.12 26.03 L94.96 26.17 L95.80 25.41 L96.64 26.60 L97.48 25.98 L98.32 26.85 L99.16 25.83 L100.00 25.65" style="fill: none; stroke: rgb(138, 151, 163); stroke-width: 1.4px; vector-effect: non-scaling-stroke; stroke-linejoin: round;"></path>
+              <path data-dc-tpl="88" d="M0.00 26.16 L0.84 24.59 L1.68 25.29 L2.52 24.56 L3.36 26.60 L4.20 24.72 L5.04 25.87 L5.88 26.59 L6.72 26.55 L7.56 24.43 L8.40 24.45 L9.24 25.48 L10.08 25.66 L10.92 25.44 L11.76 25.31 L12.61 24.91 L13.45 24.90 L14.29 25.74 L15.13 25.61 L15.97 24.73 L16.81 25.87 L17.65 25.59 L18.49 26.50 L19.33 24.97 L20.17 24.77 L21.01 25.88 L21.85 26.30 L22.69 24.43 L23.53 26.43 L24.37 25.66 L25.21 25.65 L26.05 26.46 L26.89 26.45 L27.73 25.27 L28.57 24.92 L29.41 26.52 L30.25 25.30 L31.09 24.56 L31.93 26.09 L32.77 25.34 L33.61 25.89 L34.45 25.98 L35.29 25.52 L36.13 25.06 L36.97 25.99 L37.82 26.34 L38.66 24.68 L39.50 25.26 L40.34 25.83 L41.18 24.40 L42.02 25.59 L42.86 26.30 L43.70 26.12 L44.54 24.57 L45.38 25.35 L46.22 25.57 L47.06 26.31 L47.90 25.70 L48.74 26.30 L49.58 26.71 L50.42 25.10 L51.26 24.95 L52.10 26.38 L52.94 25.45 L53.78 24.99 L54.62 24.66 L55.46 25.85 L56.30 25.77 L57.14 25.23 L57.98 24.79 L58.82 25.54 L59.66 20.66 L60.50 17.92 L61.34 15.49 L62.18 14.93 L63.03 11.59 L63.87 11.13 L64.71 8.94 L65.55 5.34 L66.39 3.86 L67.23 3.00 L68.07 5.40 L68.91 6.87 L69.75 7.66 L70.59 9.85 L71.43 13.16 L72.27 14.50 L73.11 15.95 L73.95 18.77 L74.79 21.01 L75.63 25.89 L76.47 26.23 L77.31 24.69 L78.15 26.24 L78.99 25.13 L79.83 25.09 L80.67 25.69 L81.51 26.09 L82.35 25.49 L83.19 25.93 L84.03 26.48 L84.87 25.82 L85.71 25.63 L86.55 24.97 L87.39 24.71 L88.24 24.91 L89.08 26.17 L89.92 25.12 L90.76 25.35 L91.60 26.53 L92.44 24.99 L93.28 24.80 L94.12 25.40 L94.96 24.73 L95.80 26.58 L96.64 24.98 L97.48 25.70 L98.32 24.40 L99.16 24.60 L100.00 26.26" style="fill: none; stroke: rgb(110, 231, 200); stroke-width: 1.5px; vector-effect: non-scaling-stroke; stroke-linejoin: round;"></path>
+            </svg>
+            <span data-dc-tpl="89" style="display: flex; justify-content: space-between; font-size: 11px; color: rgb(127, 138, 148); font-variant-numeric: tabular-nums;"><span data-dc-tpl="90">22:50</span><span data-dc-tpl="91">23:10</span><span data-dc-tpl="92">23:30</span><span data-dc-tpl="93">now</span></span>
+            <span data-dc-tpl="94" style="display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 12px; color: rgb(156, 167, 176); margin-top: 6px; font-variant-numeric: tabular-nums;">
+              <span data-dc-tpl="95" style="display: flex; align-items: center; gap: 6px;"><span data-dc-tpl="96" style="width: 12px; height: 2px; background: rgb(110, 231, 200); display: block;"></span><span class="sc-interp">Reading 35 ops/s</span></span>
+              <span data-dc-tpl="97" style="display: flex; align-items: center; gap: 6px;"><span data-dc-tpl="98" style="width: 12px; height: 2px; background: rgb(138, 151, 163); display: block;"></span><span class="sc-interp">Writing 420.5 KB/s</span></span>
+            </span>
+          </button>
+          <button data-dc-tpl="99" aria-label="What is Storage activity?" style="position: absolute; top: 10px; right: 10px; width: 28px; height: 28px; background: none; border: 0px; padding: 0px; display: flex; align-items: center; justify-content: center;">
+            <span data-dc-tpl="100" style="width: 18px; height: 18px; border-radius: 50%; border: 1px solid rgb(51, 65, 75); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: rgb(156, 167, 176);">?</span>
+          </button>
+        </div>
+      
+        <div data-dc-tpl="75" style="position: relative; flex: 1 1 360px; min-width: 0px; box-sizing: border-box; background: rgb(20, 26, 31); border: 1px solid rgb(34, 43, 50); border-radius: 14px;">
+          <button data-dc-tpl="76" style="width: 100%; box-sizing: border-box; text-align: left; background: none; border: 0px; border-radius: 14px; padding: 16px 18px 14px; display: flex; flex-direction: column; gap: 4px; color: rgb(230, 235, 239);">
+            <span data-dc-tpl="77" style="display: flex; justify-content: space-between; align-items: center; padding-right: 30px; min-height: 18px;">
+              <span data-dc-tpl="78" style="font-size: 11px; letter-spacing: 0.09em; color: rgb(138, 148, 157); text-transform: uppercase;"><span class="sc-interp">Temperature</span></span>
+              <svg data-dc-tpl="79" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path data-dc-tpl="80" d="M6 3.5L10.5 8 6 12.5" style="fill: none; stroke: rgb(127, 138, 148); stroke-width: 1.5px; stroke-linecap: round; stroke-linejoin: round;"></path></svg>
+            </span>
+            <span data-dc-tpl="81" style="display: flex; align-items: baseline; gap: 6px; font-variant-numeric: tabular-nums;">
+              <span data-dc-tpl="82" style="font-size: 34px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1;"><span class="sc-interp">40.4</span></span>
+              <span data-dc-tpl="83" style="font-size: 14px; color: rgb(127, 138, 148);"><span class="sc-interp">°C</span></span>
+            </span>
+            <svg data-dc-tpl="84" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: 120px; display: block; margin: 8px 0px 4px;">
+              <path data-dc-tpl="85" d="M0 7.5H100 M0 15H100 M0 22.5H100" style="fill: none; stroke: rgb(30, 39, 46); stroke-width: 1px; vector-effect: non-scaling-stroke;"></path>
+              <path data-dc-tpl="86" d="M0.00 22.82 L0.84 22.59 L1.68 22.10 L2.52 23.88 L3.36 19.75 L4.20 18.91 L5.04 23.82 L5.88 19.74 L6.72 23.70 L7.56 22.99 L8.40 19.29 L9.24 22.62 L10.08 22.05 L10.92 22.08 L11.76 21.02 L12.61 20.23 L13.45 21.84 L14.29 21.28 L15.13 20.06 L15.97 21.79 L16.81 23.55 L17.65 19.64 L18.49 19.38 L19.33 24.14 L20.17 22.41 L21.01 23.56 L21.85 20.65 L22.69 24.05 L23.53 22.04 L24.37 18.41 L25.21 19.16 L26.05 19.67 L26.89 18.13 L27.73 24.06 L28.57 22.03 L29.41 19.36 L30.25 24.16 L31.09 22.99 L31.93 18.82 L32.77 23.23 L33.61 22.54 L34.45 18.75 L35.29 19.52 L36.13 18.32 L36.97 19.69 L37.82 23.37 L38.66 21.39 L39.50 20.54 L40.34 20.69 L41.18 21.71 L42.02 22.73 L42.86 4.36 L43.70 5.51 L44.54 8.25 L45.38 3.77 L46.22 7.89 L47.06 8.65 L47.90 4.52 L48.74 6.51 L49.58 5.44 L50.42 7.51 L51.26 3.00 L52.10 8.60 L52.94 8.57 L53.78 9.48 L54.62 6.52 L55.46 8.16 L56.30 7.97 L57.14 5.45 L57.98 6.98 L58.82 9.08 L59.66 7.00 L60.50 9.34 L61.34 6.72 L62.18 8.33 L63.03 9.96 L63.87 10.59 L64.71 6.64 L65.55 4.91 L66.39 11.18 L67.23 9.80 L68.07 9.20 L68.91 6.53 L69.75 9.58 L70.59 9.83 L71.43 5.71 L72.27 8.55 L73.11 7.68 L73.95 6.88 L74.79 12.21 L75.63 8.37 L76.47 10.18 L77.31 11.70 L78.15 10.37 L78.99 7.19 L79.83 9.94 L80.67 7.00 L81.51 9.32 L82.35 7.51 L83.19 12.03 L84.03 9.70 L84.87 10.79 L85.71 13.13 L86.55 9.53 L87.39 11.92 L88.24 12.63 L89.08 10.89 L89.92 10.07 L90.76 11.39 L91.60 10.63 L92.44 8.86 L93.28 10.75 L94.12 11.34 L94.96 14.38 L95.80 10.12 L96.64 10.63 L97.48 10.59 L98.32 14.29 L99.16 12.75 L100.00 13.33 L100 30 L0 30 Z" style="fill: rgba(110, 231, 200, 0.09); stroke: none;"></path>
+              <path data-dc-tpl="87" d="M0.00 25.50 L0.84 24.10 L1.68 22.41 L2.52 26.10 L3.36 26.75 L4.20 24.85 L5.04 20.95 L5.88 23.51 L6.72 26.28 L7.56 24.94 L8.40 22.57 L9.24 22.93 L10.08 25.04 L10.92 25.39 L11.76 20.77 L12.61 23.35 L13.45 22.55 L14.29 23.77 L15.13 25.34 L15.97 25.94 L16.81 23.77 L17.65 21.52 L18.49 26.33 L19.33 25.90 L20.17 23.58 L21.01 27.00 L21.85 22.06 L22.69 23.29 L23.53 20.73 L24.37 26.03 L25.21 20.72 L26.05 26.81 L26.89 21.29 L27.73 25.38 L28.57 26.04 L29.41 23.05 L30.25 22.25 L31.09 21.52 L31.93 22.82 L32.77 24.03 L33.61 22.23 L34.45 22.86 L35.29 21.44 L36.13 26.73 L36.97 21.03 L37.82 26.07 L38.66 25.41 L39.50 26.56 L40.34 25.98 L41.18 26.28 L42.02 22.94 L42.86 8.86 L43.70 7.55 L44.54 7.31 L45.38 9.13 L46.22 5.27 L47.06 5.34 L47.90 6.38 L48.74 11.71 L49.58 6.26 L50.42 8.30 L51.26 11.38 L52.10 11.30 L52.94 9.26 L53.78 7.98 L54.62 7.17 L55.46 7.93 L56.30 7.70 L57.14 11.06 L57.98 7.46 L58.82 9.51 L59.66 9.49 L60.50 7.49 L61.34 7.27 L62.18 7.60 L63.03 11.80 L63.87 7.28 L64.71 11.19 L65.55 7.50 L66.39 9.64 L67.23 9.11 L68.07 10.86 L68.91 14.05 L69.75 10.60 L70.59 13.95 L71.43 9.15 L72.27 14.33 L73.11 13.77 L73.95 14.64 L74.79 12.63 L75.63 10.11 L76.47 12.30 L77.31 13.44 L78.15 9.24 L78.99 15.63 L79.83 13.32 L80.67 14.46 L81.51 10.89 L82.35 12.18 L83.19 15.07 L84.03 13.98 L84.87 13.25 L85.71 10.52 L86.55 15.66 L87.39 16.33 L88.24 13.83 L89.08 15.86 L89.92 16.05 L90.76 11.19 L91.60 14.82 L92.44 11.03 L93.28 17.29 L94.12 14.06 L94.96 13.05 L95.80 13.71 L96.64 16.65 L97.48 12.32 L98.32 16.38 L99.16 16.98 L100.00 12.27" style="fill: none; stroke: rgb(138, 151, 163); stroke-width: 1.4px; vector-effect: non-scaling-stroke; stroke-linejoin: round;"></path>
+              <path data-dc-tpl="88" d="M0.00 22.82 L0.84 22.59 L1.68 22.10 L2.52 23.88 L3.36 19.75 L4.20 18.91 L5.04 23.82 L5.88 19.74 L6.72 23.70 L7.56 22.99 L8.40 19.29 L9.24 22.62 L10.08 22.05 L10.92 22.08 L11.76 21.02 L12.61 20.23 L13.45 21.84 L14.29 21.28 L15.13 20.06 L15.97 21.79 L16.81 23.55 L17.65 19.64 L18.49 19.38 L19.33 24.14 L20.17 22.41 L21.01 23.56 L21.85 20.65 L22.69 24.05 L23.53 22.04 L24.37 18.41 L25.21 19.16 L26.05 19.67 L26.89 18.13 L27.73 24.06 L28.57 22.03 L29.41 19.36 L30.25 24.16 L31.09 22.99 L31.93 18.82 L32.77 23.23 L33.61 22.54 L34.45 18.75 L35.29 19.52 L36.13 18.32 L36.97 19.69 L37.82 23.37 L38.66 21.39 L39.50 20.54 L40.34 20.69 L41.18 21.71 L42.02 22.73 L42.86 4.36 L43.70 5.51 L44.54 8.25 L45.38 3.77 L46.22 7.89 L47.06 8.65 L47.90 4.52 L48.74 6.51 L49.58 5.44 L50.42 7.51 L51.26 3.00 L52.10 8.60 L52.94 8.57 L53.78 9.48 L54.62 6.52 L55.46 8.16 L56.30 7.97 L57.14 5.45 L57.98 6.98 L58.82 9.08 L59.66 7.00 L60.50 9.34 L61.34 6.72 L62.18 8.33 L63.03 9.96 L63.87 10.59 L64.71 6.64 L65.55 4.91 L66.39 11.18 L67.23 9.80 L68.07 9.20 L68.91 6.53 L69.75 9.58 L70.59 9.83 L71.43 5.71 L72.27 8.55 L73.11 7.68 L73.95 6.88 L74.79 12.21 L75.63 8.37 L76.47 10.18 L77.31 11.70 L78.15 10.37 L78.99 7.19 L79.83 9.94 L80.67 7.00 L81.51 9.32 L82.35 7.51 L83.19 12.03 L84.03 9.70 L84.87 10.79 L85.71 13.13 L86.55 9.53 L87.39 11.92 L88.24 12.63 L89.08 10.89 L89.92 10.07 L90.76 11.39 L91.60 10.63 L92.44 8.86 L93.28 10.75 L94.12 11.34 L94.96 14.38 L95.80 10.12 L96.64 10.63 L97.48 10.59 L98.32 14.29 L99.16 12.75 L100.00 13.33" style="fill: none; stroke: rgb(110, 231, 200); stroke-width: 1.5px; vector-effect: non-scaling-stroke; stroke-linejoin: round;"></path>
+            </svg>
+            <span data-dc-tpl="89" style="display: flex; justify-content: space-between; font-size: 11px; color: rgb(127, 138, 148); font-variant-numeric: tabular-nums;"><span data-dc-tpl="90">22:50</span><span data-dc-tpl="91">23:10</span><span data-dc-tpl="92">23:30</span><span data-dc-tpl="93">now</span></span>
+            <span data-dc-tpl="94" style="display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 12px; color: rgb(156, 167, 176); margin-top: 6px; font-variant-numeric: tabular-nums;">
+              <span data-dc-tpl="95" style="display: flex; align-items: center; gap: 6px;"><span data-dc-tpl="96" style="width: 12px; height: 2px; background: rgb(110, 231, 200); display: block;"></span><span class="sc-interp">Processor 40.4 °C</span></span>
+              <span data-dc-tpl="97" style="display: flex; align-items: center; gap: 6px;"><span data-dc-tpl="98" style="width: 12px; height: 2px; background: rgb(138, 151, 163); display: block;"></span><span class="sc-interp">Graphics 39.9 °C · heat level normal</span></span>
+            </span>
+          </button>
+          <button data-dc-tpl="99" aria-label="What is Temperature?" style="position: absolute; top: 10px; right: 10px; width: 28px; height: 28px; background: none; border: 0px; padding: 0px; display: flex; align-items: center; justify-content: center;">
+            <span data-dc-tpl="100" style="width: 18px; height: 18px; border-radius: 50%; border: 1px solid rgb(51, 65, 75); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: rgb(156, 167, 176);">?</span>
+          </button>
+        </div>
+      
+    </section>
+
+    
+    <section data-dc-tpl="101" style="display: flex; flex-wrap: wrap; gap: 16px;">
+      <div data-dc-tpl="102" style="flex: 2 1 560px; min-width: 0px; box-sizing: border-box; background: rgb(20, 26, 31); border: 1px solid rgb(34, 43, 50); border-radius: 14px; padding: 16px 18px;">
+        <div data-dc-tpl="103" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <span data-dc-tpl="104" style="font-size: 11px; letter-spacing: 0.09em; color: rgb(138, 148, 157); text-transform: uppercase;"><span class="sc-interp">Apps using the most · last hour</span></span>
+          <button data-dc-tpl="105" style="background: none; border: 0px; color: rgb(110, 231, 200); font-size: 12px; padding: 0px;">All apps</button>
+        </div>
+        
+          <div data-dc-tpl="107" style="display: flex; align-items: center; gap: 14px; padding: 8px 0px; border-top: 1px solid rgb(28, 36, 42);">
+            <span data-dc-tpl="108" style="flex: 0 0 230px; max-width: 40%; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span class="sc-interp">mediaanalysisd</span></span>
+            <span data-dc-tpl="109" style="flex: 1 1 0%; height: 6px; border-radius: 3px; background: rgb(28, 36, 42); display: block;"><span data-dc-tpl="110" style="display: block; height: 6px; border-radius: 3px; background: rgb(110, 231, 200); opacity: 0.75; width: 100%;"></span></span>
+            <span data-dc-tpl="111" style="flex: 0 0 56px; text-align: right; font-size: 13px; font-variant-numeric: tabular-nums;"><span class="sc-interp">32.7 %</span></span>
+          </div>
+        
+          <div data-dc-tpl="107" style="display: flex; align-items: center; gap: 14px; padding: 8px 0px; border-top: 1px solid rgb(28, 36, 42);">
+            <span data-dc-tpl="108" style="flex: 0 0 230px; max-width: 40%; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span class="sc-interp">StorageManagementService</span></span>
+            <span data-dc-tpl="109" style="flex: 1 1 0%; height: 6px; border-radius: 3px; background: rgb(28, 36, 42); display: block;"><span data-dc-tpl="110" style="display: block; height: 6px; border-radius: 3px; background: rgb(110, 231, 200); opacity: 0.75; width: 86.2%;"></span></span>
+            <span data-dc-tpl="111" style="flex: 0 0 56px; text-align: right; font-size: 13px; font-variant-numeric: tabular-nums;"><span class="sc-interp">28.2 %</span></span>
+          </div>
+        
+          <div data-dc-tpl="107" style="display: flex; align-items: center; gap: 14px; padding: 8px 0px; border-top: 1px solid rgb(28, 36, 42);">
+            <span data-dc-tpl="108" style="flex: 0 0 230px; max-width: 40%; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span class="sc-interp">ApplicationsStorageExtension</span></span>
+            <span data-dc-tpl="109" style="flex: 1 1 0%; height: 6px; border-radius: 3px; background: rgb(28, 36, 42); display: block;"><span data-dc-tpl="110" style="display: block; height: 6px; border-radius: 3px; background: rgb(110, 231, 200); opacity: 0.75; width: 72.2%;"></span></span>
+            <span data-dc-tpl="111" style="flex: 0 0 56px; text-align: right; font-size: 13px; font-variant-numeric: tabular-nums;"><span class="sc-interp">23.6 %</span></span>
+          </div>
+        
+          <div data-dc-tpl="107" style="display: flex; align-items: center; gap: 14px; padding: 8px 0px; border-top: 1px solid rgb(28, 36, 42);">
+            <span data-dc-tpl="108" style="flex: 0 0 230px; max-width: 40%; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span class="sc-interp">mediaanalysisd-access</span></span>
+            <span data-dc-tpl="109" style="flex: 1 1 0%; height: 6px; border-radius: 3px; background: rgb(28, 36, 42); display: block;"><span data-dc-tpl="110" style="display: block; height: 6px; border-radius: 3px; background: rgb(110, 231, 200); opacity: 0.75; width: 5.5%;"></span></span>
+            <span data-dc-tpl="111" style="flex: 0 0 56px; text-align: right; font-size: 13px; font-variant-numeric: tabular-nums;"><span class="sc-interp">1.8 %</span></span>
+          </div>
+        
+          <div data-dc-tpl="107" style="display: flex; align-items: center; gap: 14px; padding: 8px 0px; border-top: 1px solid rgb(28, 36, 42);">
+            <span data-dc-tpl="108" style="flex: 0 0 230px; max-width: 40%; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span class="sc-interp">Python</span></span>
+            <span data-dc-tpl="109" style="flex: 1 1 0%; height: 6px; border-radius: 3px; background: rgb(28, 36, 42); display: block;"><span data-dc-tpl="110" style="display: block; height: 6px; border-radius: 3px; background: rgb(110, 231, 200); opacity: 0.75; width: 4.6%;"></span></span>
+            <span data-dc-tpl="111" style="flex: 0 0 56px; text-align: right; font-size: 13px; font-variant-numeric: tabular-nums;"><span class="sc-interp">1.5 %</span></span>
+          </div>
+        
+      </div>
+      <div data-dc-tpl="112" style="flex: 1 1 320px; min-width: 0px; box-sizing: border-box; background: rgb(20, 26, 31); border: 1px solid rgb(34, 43, 50); border-radius: 14px; padding: 16px 18px;">
+        <div data-dc-tpl="113" style="font-size: 11px; letter-spacing: 0.09em; color: rgb(138, 148, 157); text-transform: uppercase; margin-bottom: 10px;">Status</div>
+        <div data-dc-tpl="114" style="display: flex; gap: 12px; padding: 10px 0px; border-top: 1px solid rgb(28, 36, 42);">
+          <svg data-dc-tpl="115" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" style="flex: 0 0 14px; margin-top: 2px;"><path data-dc-tpl="116" d="M8 2.2l6.2 11H1.8z M8 6.6v3 M8 11.6v.1" style="fill: none; stroke: rgb(245, 181, 68); stroke-width: 1.5px; stroke-linejoin: round; stroke-linecap: round;"></path></svg>
+          <div data-dc-tpl="117"><div data-dc-tpl="118" style="font-size: 13px; color: rgb(245, 181, 68); font-weight: 600;"><span class="sc-interp">Memory is getting tight</span></div><div data-dc-tpl="119" style="font-size: 12px; color: rgb(156, 167, 176); margin-top: 2px;"><span class="sc-interp">3.2 of 8 GB in use since 22:41</span></div></div>
+        </div>
+        <div data-dc-tpl="120" style="display: flex; gap: 12px; padding: 10px 0px; border-top: 1px solid rgb(28, 36, 42);">
+          <span data-dc-tpl="121" style="flex: 0 0 14px; height: 14px; display: flex; align-items: center; justify-content: center; margin-top: 2px;"><span data-dc-tpl="122" style="width: 6px; height: 6px; border-radius: 50%; border: 1.5px solid rgb(127, 138, 148); display: block;"></span></span>
+          <div data-dc-tpl="123"><div data-dc-tpl="124" style="font-size: 13px;"><span class="sc-interp">Monitoring is running</span></div><div data-dc-tpl="125" style="font-size: 12px; color: rgb(156, 167, 176); margin-top: 2px;"><span class="sc-interp">uses 0.7 % of the processor · 11 MB</span></div></div>
+        </div>
+        <div data-dc-tpl="126" style="display: flex; gap: 12px; padding: 10px 0px; border-top: 1px solid rgb(28, 36, 42);">
+          <span data-dc-tpl="127" style="flex: 0 0 14px; height: 14px; display: flex; align-items: center; justify-content: center; margin-top: 2px;"><span data-dc-tpl="128" style="width: 6px; height: 6px; border-radius: 50%; border: 1.5px solid rgb(127, 138, 148); display: block;"></span></span>
+          <div data-dc-tpl="129"><div data-dc-tpl="130" style="font-size: 13px;"><span class="sc-interp">64 sensors found</span></div><div data-dc-tpl="131" style="font-size: 12px; color: rgb(156, 167, 176); margin-top: 2px;"><span class="sc-interp">Deep power readings are locked.</span> <button data-dc-tpl="132" style="background: none; border: 0px; color: rgb(110, 231, 200); padding: 0px; font-size: 12px;">Unlock</button></div></div>
+        </div>
+      </div>
+    </section>
+
+    <div data-dc-tpl="133" style="font-size: 12px; color: rgb(127, 138, 148); text-align: right;">drag a chart to zoom · double-click resets · hover any value for its graph · tap ? to see what a number means</div>
+  </main></div></div></div>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;mint&quot;,&quot;mocha&quot;],&quot;default&quot;:&quot;mint&quot;},&quot;words&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;plain&quot;,&quot;technical&quot;],&quot;default&quot;:&quot;plain&quot;},&quot;open&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;devices&quot;,&quot;help&quot;,&quot;none&quot;],&quot;default&quot;:&quot;devices&quot;},&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:1000}}">
+class Component extends DCLogic {
+  renderVals() {
+    const themes = {
+      mint: { bg: '#0D1013', surf: '#141A1F', raised: '#1C242A', bd: '#222B32', bds: '#33414B', menuBd: '#33414B', tx: '#E6EBEF', tx2: '#9CA7B0', tx3: '#7F8A94', lab: '#8A949D', acc: '#6EE7C8', accT: '#06231D', accF: 'rgba(110,231,200,0.09)', warn: '#F5B544', warnBd: '#5E4A24', grid: '#1E272E', l2: '#8A97A3', hdr: '#1C242A' },
+      mocha: { bg: '#181825', surf: '#1E1E2E', raised: '#313244', bd: '#313244', bds: '#45475A', menuBd: '#45475A', tx: '#CDD6F4', tx2: '#A6ADC8', tx3: '#9399B2', lab: '#9399B2', acc: '#94E2D5', accT: '#11111B', accF: 'rgba(148,226,213,0.10)', warn: '#FAB387', warnBd: '#6B4E3D', grid: '#313244', l2: '#7F849C', hdr: '#313244' }
+    };
+    const th = themes[this.props.theme] || themes.mint;
+    const plain = (this.props.words || 'plain') !== 'technical';
+    const open = this.props.open || 'devices';
+    const P = (a, b) => (plain ? a : b);
+
+    const rnd = (n, s) => { let a = s; return Array.from({ length: n }, () => { a = (a * 1664525 + 1013904223) % 4294967296; return a / 4294967296; }); };
+    const ser = (n, s, base, amp, drift) => rnd(n, s).map((r, i) => base + (r - 0.5) * amp + (drift || 0) * i / n);
+    const line = (v, lo, hi) => { lo = lo === undefined ? Math.min(...v) : lo; hi = hi === undefined ? Math.max(...v) : hi; return v.map((y, i) => (i ? 'L' : 'M') + (i / (v.length - 1) * 100).toFixed(2) + ' ' + (27 - (y - lo) / ((hi - lo) || 1) * 24).toFixed(2)).join(' '); };
+    const area = (v, lo, hi) => line(v, lo, hi) + ' L100 30 L0 30 Z';
+    const mk = (label, value, unit, sub, delta, v, warn, badge, showHelp) => ({ label, value, unit, sub, delta, line: line(v), area: area(v), warn: !!warn, badge: badge || 'Warning', showHelp: !!showHelp, border: warn ? th.warnBd : th.bd });
+
+    const ranges = ['1m', '5m', '15m', '1h', '6h', '1d', '7d', '30d', '1y'].map((l) => ({ label: l, bg: l === '1h' ? th.acc : 'transparent', fg: l === '1h' ? th.accT : th.tx2, w: l === '1h' ? 600 : 400 }));
+    const chips = [
+      mk(P('Processor', 'CPU'), '36.5', '%', P('8 cores', '8 cores · pressure 46 %'), P('12.8 points above last hour', '+12.8 pp vs 1h avg'), ser(90, 3, 30, 22, 0)),
+      mk('Memory', '80.1', '%', P('3.2 GB of 8 GB in use', '3221 of 8192 MB'), P('Same as last hour', '−0.1 pp vs 1h avg'), ser(90, 8, 78, 6, 2), true, P('Running low', 'Warning'), open === 'help'),
+      mk(P('Graphics', 'GPU'), '16.0', '%', P('drawing the screen: 15 %', 'renderer 15 % · 549 MB wired'), P('6.5 points above last hour', '+6.5 pp vs 1h avg'), ser(90, 12, 10, 8, 6)),
+      mk('Battery', '97', '%', P('10 h 29 min left · using 4.5 W', '10:29 left · 4.50 W draw'), P('Holds 82 % of its original charge', 'health 82 %'), ser(90, 15, 97, 1, -6)),
+      mk(P('Power use', 'Package power'), '1.37', 'W', P('Processor 1.1 · Graphics 0.3 W', 'CPU 1.1 · GPU 0.3 · ANE 0.0 W'), P('Updates every 15 seconds', 'powermetrics · 15 s'), ser(90, 21, 1.2, 0.5, 0.4)),
+      mk(P('Workload', 'Load'), '3.68', '', P('last 5 min 3.13 · last 15 min 2.84', '5m 3.13 · 15m 2.84'), P('Slightly lighter than last hour', '−0.32 vs 1h avg'), ser(90, 27, 3.2, 1.2, -0.4))
+    ];
+
+    const net1 = ser(120, 5, 0.5, 0.4, 0).map((x, i) => i === 28 ? 9 : i === 29 ? 3 : x);
+    const net2 = ser(120, 6, 0.4, 0.2, 0);
+    const dk1 = ser(120, 7, 0.6, 0.4, 0).map((x, i) => (i > 70 && i < 90) ? x + 4 - Math.abs(80 - i) * 0.35 : x);
+    const dk2 = ser(120, 9, 0.5, 0.3, 0);
+    const tm1 = ser(120, 11, 37, 1.2, 0).map((x, i) => i > 50 ? x + 3 - (i - 50) * 0.02 : x);
+    const tm2 = ser(120, 13, 36.5, 1.2, 0).map((x, i) => i > 50 ? x + 3 - (i - 50) * 0.02 : x);
+    const pair = (a, b) => { const lo = Math.min(...a, ...b), hi = Math.max(...a, ...b); return { line: line(a, lo, hi), line2: line(b, lo, hi), area: area(a, lo, hi) }; };
+    const bigs = [
+      Object.assign({ label: P('Network traffic', 'Network · en0'), value: '10.1', unit: 'KB/s', l1: P('Downloading 10.1 KB/s', 'down 10.1 KB/s'), l2: P('Uploading 3.1 KB/s', 'up 3.1 KB/s') }, pair(net1, net2)),
+      Object.assign({ label: P('Storage activity', 'Disk'), value: '1.1', unit: 'MB/s', l1: P('Reading 35 ops/s', 'read 35 iops'), l2: P('Writing 420.5 KB/s', 'write 420.5 KB/s') }, pair(dk1, dk2)),
+      Object.assign({ label: 'Temperature', value: '40.4', unit: '°C', l1: P('Processor 40.4 °C', 'CPU 40.4 °C'), l2: P('Graphics 39.9 °C · heat level normal', 'GPU 39.9 °C · pressure Nominal') }, pair(tm1, tm2))
+    ];
+    const rows = [['mediaanalysisd', 32.7], ['StorageManagementService', 28.2], ['ApplicationsStorageExtension', 23.6], ['mediaanalysisd-access', 1.8], ['Python', 1.5]];
+    const apps = rows.map(([name, v]) => ({ name, v: v.toFixed(1) + ' %', w: Math.max(2, v / 32.7 * 100).toFixed(1) + '%' }));
+
+    const menu = [
+      { name: 'This Mac', sub: 'You are here', here: true, bg: th.surf, fill: th.acc, ring: th.acc, op: 1 },
+      { name: 'Studio PC', sub: 'Online · Windows', here: false, bg: 'transparent', fill: th.acc, ring: th.acc, op: 1 },
+      { name: 'Phone', sub: 'Online · Android', here: false, bg: 'transparent', fill: th.acc, ring: th.acc, op: 1 },
+      { name: 'Living-room TV', sub: 'Online · Android TV', here: false, bg: 'transparent', fill: th.acc, ring: th.acc, op: 1 },
+      { name: 'Old laptop', sub: 'Offline · last seen 3 days ago', here: false, bg: 'transparent', fill: 'transparent', ring: th.tx3, op: 0.6 }
+    ];
+
+    return {
+      th, ranges, chips, bigs, apps, menu,
+      showMenu: open === 'devices',
+      secureText: P('Private · only your devices can see this', 'direct · end-to-end encrypted'),
+      appsTitle: P('Apps using the most · last hour', 'Top consumers · 5 of 455 · 1h'),
+      st1: P('Memory is getting tight', 'Memory pressure: warning'),
+      st1s: P('3.2 of 8 GB in use since 22:41', '3221 of 8192 MB in use · since 22:41'),
+      st2: P('Monitoring is running', 'Collector running'),
+      st2s: P('uses 0.7 % of the processor · 11 MB', '0.68 % CPU · 10.9 MB · 1 s sampling'),
+      st3: P('64 sensors found', '64 sensors · 9 groups'),
+      st3s: P('Deep power readings are locked.', 'Deep power data locked.')
+    };
+  }
+}
+</script>
+
+
+</body>
