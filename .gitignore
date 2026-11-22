@@ -18,3 +18,5 @@ dashboard/.sampler.pid
 target/
 .venv/
 tests/fixtures/
+web/node_modules/
+web/dist/

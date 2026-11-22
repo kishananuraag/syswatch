@@ -83,3 +83,29 @@
 - **T31 parity**: nine live fixtures recorded from the Python dashboard, `crates/agent/tests/parity.rs` replays them against the Rust handlers → **"9 endpoints, 912 keys verified, 0 mismatches"**, clippy `-D warnings` clean, extras listed in `PARITY.md` as rust-only additive.
 - **Service state**: Python dashboard on 8123 (launchd `com.barbarian.syswatch.dashboard`) had stopped mid-run and was kickstarted back (pid 38124, `/api/health` 200). The Rust agent is not a launchd job — it was run by hand on 8199 for verification.
 - **LEARNED**: static acceptance (syntax check + grep counts) passed on a dashboard that rendered nothing. A UI round is done only when a browser asserts element counts; that rule now lives in `.hermes.md` §3 and the brain ledger (`syswatch`, class `acceptance-gap`).
+
+## 2026-11-21 00:20 IST - T32/T33/T34: dashboard as a copy of the reference UI (commit 166ab76)
+
+Kishan's correction: "we are actually copying the UI not just trying to fit in that dashboard".
+Target found in last night's attachment syswatch-UI-v1.html (double-bundled React mockup);
+unpacked to docs/design/syswatch-UI-v1.reference.html, rendered DOM + CSS extracted to
+docs/design/reference-dom.html / reference-styles.json, screenshots at 1440 and 390.
+
+Ported into dashboard/static (index.html, app.css, app.js) and wired to real endpoints:
+reference header/toolbar/grid/tile anatomy, nine range pills driving every chart, apps panel
+4 cols + status 2 cols, HH:MM axes, mint accent. No mockup sample value in the source
+(ui_check greps for them).
+
+Defects found by live review and fixed: apps summed per-core cpu_pct (>100%) -> share of the
+machine; storage footer units now reconcile with the headline; charts use robust 2-98%
+bounds with clamped y so one outlier no longer squashes the line to the floor; thermal series
+takes the hottest plausible sensor per bucket; footers split into nowrap parts (equal card
+heights, no mid-phrase ellipsis); backlog panel fills its height.
+
+Gate: scripts/ui_check.py (Chrome headless, 1440 + 390) -> "9 tiles, 9 ranges, 3 tabs,
+9 labels, 3 wide cards, apps <=100%, 0 clipped nodes, status rows >=6, 0 mock values,
+18/18 single-line footers, cards equal height 6/6, 0 gaps as values, 2/2 power values carry W".
+
+KNOWN GAP: app names arrive truncated at 23 chars ("Google Chrome Helper (Ap") because the
+collector takes psutil.Process.name() on macOS; a libproc proc_pidpath basename would fix it.
+Not done - it is a collector change, parked for the next round.

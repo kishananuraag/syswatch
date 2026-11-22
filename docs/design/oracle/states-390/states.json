@@ -1,0 +1,14 @@
+{
+  "states": [
+    {
+      "changed": [],
+      "file": "state-1.png",
+      "index": 0,
+      "kind": "menu",
+      "label": "PROCESSOR ? 30.3 % 8 cores 0.5 points above last hour",
+      "sha256": "fedb04b7c2b063e1285a9edbac27cf111929801d4128a909bb90c8400379e283"
+    }
+  ],
+  "url": "http://127.0.0.1:8123/#apps",
+  "width": 390
+}

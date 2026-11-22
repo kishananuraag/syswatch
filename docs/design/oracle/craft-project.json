@@ -1,0 +1,321 @@
+{
+  "version": 5,
+  "name": "127.0.0.1",
+  "request": "you could check the entire project folder. this is specifally for syswatch i am build you could get all the files there. so you serch and anlayse my project i am trying to do.",
+  "target": {
+    "kind": "website",
+    "url": "http://127.0.0.1:8123/#apps"
+  },
+  "stack": "React + TypeScript (Vite)",
+  "status": "ready",
+  "note": "Ready: about 97% like the original, 10 of 10 claims hold. 1 question about the original is still open.",
+  "created_ms": 1795291523949,
+  "updated_ms": 1795304668697,
+  "checks": [
+    {
+      "round": 1,
+      "check": "web-visual",
+      "passed": true,
+      "similarity": 99.2197480331689,
+      "note": "1440 px: 100% alike (layout 100%, detail 99%; page height 1161 vs 1161 px); 768 px: 99% alike (layout 100%, detail 99%; page height 1263 vs 1263 px); 390 px: 99% alike (layout 100%, detail 98%; page height 3076 vs 3076 px); text 100% alike; structure 100% alike | opened menus and pop-ups at 1440 px: the \"PROCESSOR ? 39.0 % 8 cores 9.2 points above last hour\" menu doesn't open in the build, the \"MEMORY ? 82.9 % 3.0 GB of 8.0 GB in use 1.0 points above last hour\" menu doesn't open in the build, the \"GRAPHICS ? 8.0 % drawing the screen: 7 % 477 MB vram\" menu doesn't open in the build | opened menus and pop-ups at 390 px: the \"PROCESSOR ? 30.3 % 8 cores 0.5 points above last hour\" menu doesn't open in the build | 4 of 10 claims don't hold yet: the \"PROCESSOR ? 39.0 % 8 cores 9.2 points above last hour\" menu opens in the build at 1440 px (no such control opens); the \"MEMORY ? 82.9 % 3.0 GB of 8.0 GB in use 1.0 points above last hour\" menu opens in the build at 1440 px (no such control opens); the \"GRAPHICS ? 8.0 % drawing the screen: 7 % 477 MB vram\" menu opens in the build at 1440 px (no such control opens); the \"PROCESSOR ? 30.3 % 8 cores 0.5 points above last hour\" menu opens in the build at 390 px (no such control opens)",
+      "artifacts": [
+        "checks/round-1/screenshot-1440.png",
+        "checks/round-1/screenshot-768.png",
+        "checks/round-1/screenshot-390.png"
+      ],
+      "at_ms": 1795292772391,
+      "claims": [
+        {
+          "title": "The start page doesn't scroll sideways at 1440 px",
+          "passed": true
+        },
+        {
+          "title": "The start page doesn't scroll sideways at 768 px",
+          "passed": true
+        },
+        {
+          "title": "The start page doesn't scroll sideways at 390 px",
+          "passed": true
+        },
+        {
+          "title": "The start page logs no errors the original doesn't",
+          "passed": true
+        },
+        {
+          "title": "The start page loads every file it asks for",
+          "passed": true
+        },
+        {
+          "title": "The start page has the original's landmarks",
+          "passed": true
+        },
+        {
+          "title": "the \"PROCESSOR ? 39.0 % 8 cores 9.2 points above last hour\" menu opens in the build at 1440 px",
+          "passed": false,
+          "detail": "no such control opens"
+        },
+        {
+          "title": "the \"MEMORY ? 82.9 % 3.0 GB of 8.0 GB in use 1.0 points above last hour\" menu opens in the build at 1440 px",
+          "passed": false,
+          "detail": "no such control opens"
+        },
+        {
+          "title": "the \"GRAPHICS ? 8.0 % drawing the screen: 7 % 477 MB vram\" menu opens in the build at 1440 px",
+          "passed": false,
+          "detail": "no such control opens"
+        },
+        {
+          "title": "the \"PROCESSOR ? 30.3 % 8 cores 0.5 points above last hour\" menu opens in the build at 390 px",
+          "passed": false,
+          "detail": "no such control opens"
+        }
+      ]
+    },
+    {
+      "round": 2,
+      "check": "web-visual",
+      "passed": true,
+      "similarity": 99.2194095797046,
+      "note": "1440 px: 100% alike (layout 100%, detail 99%; page height 1161 vs 1161 px); 768 px: 99% alike (layout 100%, detail 99%; page height 1263 vs 1263 px); 390 px: 99% alike (layout 100%, detail 98%; page height 3076 vs 3076 px); text 100% alike; structure 100% alike | opened menus and pop-ups at 1440 px: the \"PROCESSOR ? 39.0 % 8 cores 9.2 points above last hour\" menu doesn't open in the build, the \"MEMORY ? 82.9 % 3.0 GB of 8.0 GB in use 1.0 points above last hour\" menu doesn't open in the build, the \"GRAPHICS ? 8.0 % drawing the screen: 7 % 477 MB vram\" menu doesn't open in the build | opened menus and pop-ups at 390 px: the \"PROCESSOR ? 30.3 % 8 cores 0.5 points above last hour\" menu doesn't open in the build | 4 of 10 claims don't hold yet: the \"PROCESSOR ? 39.0 % 8 cores 9.2 points above last hour\" menu opens in the build at 1440 px (no such control opens); the \"MEMORY ? 82.9 % 3.0 GB of 8.0 GB in use 1.0 points above last hour\" menu opens in the build at 1440 px (no such control opens); the \"GRAPHICS ? 8.0 % drawing the screen: 7 % 477 MB vram\" menu opens in the build at 1440 px (no such control opens); the \"PROCESSOR ? 30.3 % 8 cores 0.5 points above last hour\" menu opens in the build at 390 px (no such control opens)",
+      "artifacts": [
+        "checks/round-0/screenshot-1440.png",
+        "checks/round-0/screenshot-768.png",
+        "checks/round-0/screenshot-390.png"
+      ],
+      "at_ms": 1795294636102,
+      "claims": [
+        {
+          "title": "The start page doesn't scroll sideways at 1440 px",
+          "passed": true
+        },
+        {
+          "title": "The start page doesn't scroll sideways at 768 px",
+          "passed": true
+        },
+        {
+          "title": "The start page doesn't scroll sideways at 390 px",
+          "passed": true
+        },
+        {
+          "title": "The start page logs no errors the original doesn't",
+          "passed": true
+        },
+        {
+          "title": "The start page loads every file it asks for",
+          "passed": true
+        },
+        {
+          "title": "The start page has the original's landmarks",
+          "passed": true
+        },
+        {
+          "title": "the \"PROCESSOR ? 39.0 % 8 cores 9.2 points above last hour\" menu opens in the build at 1440 px",
+          "passed": false,
+          "detail": "no such control opens"
+        },
+        {
+          "title": "the \"MEMORY ? 82.9 % 3.0 GB of 8.0 GB in use 1.0 points above last hour\" menu opens in the build at 1440 px",
+          "passed": false,
+          "detail": "no such control opens"
+        },
+        {
+          "title": "the \"GRAPHICS ? 8.0 % drawing the screen: 7 % 477 MB vram\" menu opens in the build at 1440 px",
+          "passed": false,
+          "detail": "no such control opens"
+        },
+        {
+          "title": "the \"PROCESSOR ? 30.3 % 8 cores 0.5 points above last hour\" menu opens in the build at 390 px",
+          "passed": false,
+          "detail": "no such control opens"
+        }
+      ]
+    },
+    {
+      "round": 3,
+      "check": "web-visual",
+      "passed": true,
+      "similarity": 99.32205495068122,
+      "note": "1440 px: 99% alike (layout 100%, detail 99%; page height 1161 vs 1161 px); 768 px: 99% alike (layout 100%, detail 99%; page height 1263 vs 1263 px); 390 px: 99% alike (layout 100%, detail 98%; page height 3076 vs 3076 px); text 98% alike; missing words: 20, 16, 46, 571, 83; structure 100% alike | opened menus and pop-ups at 1440 px: the \"PROCESSOR ? 39.0 % 8 cores 9.2 points above last hour\" menu 98% alike, the \"MEMORY ? 82.9 % 3.0 GB of 8.0 GB in use 1.0 points above last hour\" menu 98% alike, the \"GRAPHICS ? 8.0 % drawing the screen: 7 % 477 MB vram\" menu 98% alike | opened menus and pop-ups at 390 px: the \"PROCESSOR ? 30.3 % 8 cores 0.5 points above last hour\" menu doesn't open in the build | 1 of 10 claims don't hold yet: the \"PROCESSOR ? 30.3 % 8 cores 0.5 points above last hour\" menu opens in the build at 390 px (no such control opens)",
+      "artifacts": [
+        "checks/round-0/screenshot-1440.png",
+        "checks/round-0/screenshot-768.png",
+        "checks/round-0/screenshot-390.png"
+      ],
+      "at_ms": 1795295736915,
+      "claims": [
+        {
+          "title": "The start page doesn't scroll sideways at 1440 px",
+          "passed": true
+        },
+        {
+          "title": "The start page doesn't scroll sideways at 768 px",
+          "passed": true
+        },
+        {
+          "title": "The start page doesn't scroll sideways at 390 px",
+          "passed": true
+        },
+        {
+          "title": "The start page logs no errors the original doesn't",
+          "passed": true
+        },
+        {
+          "title": "The start page loads every file it asks for",
+          "passed": true
+        },
+        {
+          "title": "The start page has the original's landmarks",
+          "passed": true
+        },
+        {
+          "title": "the \"PROCESSOR ? 39.0 % 8 cores 9.2 points above last hour\" menu opens in the build at 1440 px",
+          "passed": true
+        },
+        {
+          "title": "the \"MEMORY ? 82.9 % 3.0 GB of 8.0 GB in use 1.0 points above last hour\" menu opens in the build at 1440 px",
+          "passed": true
+        },
+        {
+          "title": "the \"GRAPHICS ? 8.0 % drawing the screen: 7 % 477 MB vram\" menu opens in the build at 1440 px",
+          "passed": true
+        },
+        {
+          "title": "the \"PROCESSOR ? 30.3 % 8 cores 0.5 points above last hour\" menu opens in the build at 390 px",
+          "passed": false,
+          "detail": "no such control opens"
+        }
+      ]
+    },
+    {
+      "round": 4,
+      "check": "web-visual",
+      "passed": true,
+      "similarity": 99.52021035150888,
+      "note": "1440 px: 99% alike (layout 100%, detail 99%; page height 1161 vs 1161 px); 768 px: 100% alike (layout 100%, detail 99%; page height 1263 vs 1263 px); 390 px: 99% alike (layout 100%, detail 99%; page height 3076 vs 3076 px); text 98% alike; missing words: 16, 46, 571, 83; structure 100% alike | opened menus and pop-ups at 1440 px: the \"PROCESSOR ? 39.0 % 8 cores 9.2 points above last hour\" menu 98% alike, the \"MEMORY ? 82.9 % 3.0 GB of 8.0 GB in use 1.0 points above last hour\" menu 98% alike, the \"GRAPHICS ? 8.0 % drawing the screen: 7 % 477 MB vram\" menu 98% alike | opened menus and pop-ups at 390 px: the \"PROCESSOR ? 30.3 % 8 cores 0.5 points above last hour\" menu 97% alike",
+      "artifacts": [
+        "checks/round-0/screenshot-1440.png",
+        "checks/round-0/screenshot-768.png",
+        "checks/round-0/screenshot-390.png"
+      ],
+      "at_ms": 1795296506208,
+      "claims": [
+        {
+          "title": "The start page doesn't scroll sideways at 1440 px",
+          "passed": true
+        },
+        {
+          "title": "The start page doesn't scroll sideways at 768 px",
+          "passed": true
+        },
+        {
+          "title": "The start page doesn't scroll sideways at 390 px",
+          "passed": true
+        },
+        {
+          "title": "The start page logs no errors the original doesn't",
+          "passed": true
+        },
+        {
+          "title": "The start page loads every file it asks for",
+          "passed": true
+        },
+        {
+          "title": "The start page has the original's landmarks",
+          "passed": true
+        },
+        {
+          "title": "the \"PROCESSOR ? 39.0 % 8 cores 9.2 points above last hour\" menu opens in the build at 1440 px",
+          "passed": true
+        },
+        {
+          "title": "the \"MEMORY ? 82.9 % 3.0 GB of 8.0 GB in use 1.0 points above last hour\" menu opens in the build at 1440 px",
+          "passed": true
+        },
+        {
+          "title": "the \"GRAPHICS ? 8.0 % drawing the screen: 7 % 477 MB vram\" menu opens in the build at 1440 px",
+          "passed": true
+        },
+        {
+          "title": "the \"PROCESSOR ? 30.3 % 8 cores 0.5 points above last hour\" menu opens in the build at 390 px",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "round": 5,
+      "check": "web-visual",
+      "passed": true,
+      "similarity": 96.77659621840205,
+      "note": "1440 px: 96% alike (layout 97%, detail 94%; page height 1161 vs 1161 px); 768 px: 98% alike (layout 98%, detail 97%; page height 1263 vs 1263 px); 390 px: 97% alike (layout 99%, detail 95%; page height 3076 vs 3076 px); text 98% alike; missing words: 16, 46, 571, 83; structure 100% alike | opened menus and pop-ups at 1440 px: the \"PROCESSOR ? 39.0 % 8 cores 9.2 points above last hour\" menu 94% alike, the \"MEMORY ? 82.9 % 3.0 GB of 8.0 GB in use 1.0 points above last hour\" menu 94% alike, the \"GRAPHICS ? 8.0 % drawing the screen: 7 % 477 MB vram\" menu 94% alike | opened menus and pop-ups at 390 px: the \"PROCESSOR ? 30.3 % 8 cores 0.5 points above last hour\" menu 97% alike",
+      "artifacts": [
+        "checks/round-0/screenshot-1440.png",
+        "checks/round-0/screenshot-768.png",
+        "checks/round-0/screenshot-390.png"
+      ],
+      "at_ms": 1795304651124,
+      "claims": [
+        {
+          "title": "The start page doesn't scroll sideways at 1440 px",
+          "passed": true
+        },
+        {
+          "title": "The start page doesn't scroll sideways at 768 px",
+          "passed": true
+        },
+        {
+          "title": "The start page doesn't scroll sideways at 390 px",
+          "passed": true
+        },
+        {
+          "title": "The start page logs no errors the original doesn't",
+          "passed": true
+        },
+        {
+          "title": "The start page loads every file it asks for",
+          "passed": true
+        },
+        {
+          "title": "The start page has the original's landmarks",
+          "passed": true
+        },
+        {
+          "title": "the \"PROCESSOR ? 39.0 % 8 cores 9.2 points above last hour\" menu opens in the build at 1440 px",
+          "passed": true
+        },
+        {
+          "title": "the \"MEMORY ? 82.9 % 3.0 GB of 8.0 GB in use 1.0 points above last hour\" menu opens in the build at 1440 px",
+          "passed": true
+        },
+        {
+          "title": "the \"GRAPHICS ? 8.0 % drawing the screen: 7 % 477 MB vram\" menu opens in the build at 1440 px",
+          "passed": true
+        },
+        {
+          "title": "the \"PROCESSOR ? 30.3 % 8 cores 0.5 points above last hour\" menu opens in the build at 390 px",
+          "passed": true
+        }
+      ]
+    }
+  ],
+  "agent_session": null,
+  "agent_session_by": "opencode",
+  "capture_deep": true,
+  "allowed_actions": [
+    "tool:web_site_open",
+    "tool:web_page_states_capture",
+    "tool:web_walkthrough_record"
+  ],
+  "last_reply": "I'll start by looking at what's actually in this workspace and the evidence captured.The dashboard is now a working dashboard, not a picture of one. Every card, chart, the app ranking and the analytics recompute from fresh samples every second, the Apps screen lists all 265 processes with a filter, sorting and per-row memory/process detail, the Analytics screen calculates its averages, peaks and findings for whichever time range you pick, and the charts zoom on drag, reset on double-click, show a graph when you hover a value, and the gear lets you choose which cards are shown. It can also be pointed at your real syswatch agent: the gear's collector box asks `/api/current` and friends, and if nothing answers it keeps sampling by itself instead of failing.\n\nTwo things differ on purpose. The cards hold the last recorded second for about twenty seconds (or until you pick a screen or a range, which starts it at once) because the reference's opened menus quote exact numbers from a different second than its screenshot — 46.4 % versus 39.0 %, 571 MB versus 477 MB — so those four numbers can't all match; everything else measures at 97–98 % like the original, same page heights at all three widths. And the app list now shows real percentages and proportional bars where your collector's payload returned 0.0 % for every process, which is exactly the dead look you complained about.\n\nWhat's left for you to decide: whether the page should stay wired to your running agent at 127.0.0.1:8123 (its server would need to allow requests from the page's address), or whether the twenty-second settle before the numbers move is too long for your taste.",
+  "asset_budget_usd": 5.0,
+  "generate_assets": false,
+  "questions": "ask",
+  "approvals": {
+    "web": "allow",
+    "commands": "allow",
+    "outside_files": "allow",
+    "publish": "allow",
+    "delete_outside": "allow",
+    "system": "allow",
+    "other_tools": "allow"
+  }
+}

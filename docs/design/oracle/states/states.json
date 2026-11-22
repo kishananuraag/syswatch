@@ -1,0 +1,30 @@
+{
+  "states": [
+    {
+      "changed": [],
+      "file": "state-1.png",
+      "index": 0,
+      "kind": "menu",
+      "label": "PROCESSOR ? 39.0 % 8 cores 9.2 points above last hour",
+      "sha256": "77df087f2cc6b0972c34a89ce016ddb12951832a3af09dc5738704e40f5c8600"
+    },
+    {
+      "changed": [],
+      "file": "state-2.png",
+      "index": 1,
+      "kind": "menu",
+      "label": "MEMORY ? 82.9 % 3.0 GB of 8.0 GB in use 1.0 points above last hour",
+      "sha256": "567989d240b57f5b15c2c094be0c839ffb6a3da5f1c290f30eefeae2493b4c20"
+    },
+    {
+      "changed": [],
+      "file": "state-3.png",
+      "index": 2,
+      "kind": "menu",
+      "label": "GRAPHICS ? 8.0 % drawing the screen: 7 % 477 MB vram",
+      "sha256": "ec7a0b683928ee80c0b92fe7de8bb0dda6b75c7f502af3e0cd4b899817e62857"
+    }
+  ],
+  "url": "http://127.0.0.1:8123/#apps",
+  "width": 1440
+}

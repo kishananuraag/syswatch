@@ -1,0 +1,1370 @@
+{
+  "a11y": {
+    "images_without_alt": 0,
+    "landmarks": {
+      "banner": 1,
+      "main": 1,
+      "tablist": 1
+    },
+    "lang": "en",
+    "unnamed_controls": 0,
+    "unnamed_examples": []
+  },
+  "assets": {
+    "background_images": [],
+    "fonts": [],
+    "images": [],
+    "inline_scripts": 0,
+    "requests": [
+      {
+        "bytes": 9989,
+        "type": "link",
+        "url": "http://127.0.0.1:8123/static/app.css"
+      },
+      {
+        "bytes": 207244,
+        "type": "script",
+        "url": "http://127.0.0.1:8123/static/chart.umd.min.js"
+      },
+      {
+        "bytes": 30275,
+        "type": "script",
+        "url": "http://127.0.0.1:8123/static/app.js"
+      },
+      {
+        "bytes": 5517,
+        "type": "fetch",
+        "url": "http://127.0.0.1:8123/api/current"
+      },
+      {
+        "bytes": 16206,
+        "type": "fetch",
+        "url": "http://127.0.0.1:8123/api/analytics"
+      },
+      {
+        "bytes": 370953,
+        "type": "fetch",
+        "url": "http://127.0.0.1:8123/api/consumers"
+      },
+      {
+        "bytes": 95742,
+        "type": "fetch",
+        "url": "http://127.0.0.1:8123/api/history"
+      },
+      {
+        "bytes": 46952,
+        "type": "fetch",
+        "url": "http://127.0.0.1:8123/api/sensors"
+      },
+      {
+        "bytes": 2226,
+        "type": "fetch",
+        "url": "http://127.0.0.1:8123/api/battery"
+      },
+      {
+        "bytes": 322,
+        "type": "other",
+        "url": "http://127.0.0.1:8123/favicon.ico"
+      },
+      {
+        "bytes": 5500,
+        "type": "fetch",
+        "url": "http://127.0.0.1:8123/api/current"
+      }
+    ],
+    "scripts": [
+      "http://127.0.0.1:8123/static/chart.umd.min.js",
+      "http://127.0.0.1:8123/static/app.js"
+    ],
+    "stylesheets": [
+      "http://127.0.0.1:8123/static/app.css"
+    ]
+  },
+  "breakpoints": [
+    {
+      "count": 1,
+      "px": 640,
+      "query": "max-width 640px"
+    },
+    {
+      "count": 1,
+      "px": 1440,
+      "query": "min-width 1440px"
+    }
+  ],
+  "design": {
+    "backgrounds": [
+      {
+        "count": 13,
+        "value": "#141a1f"
+      },
+      {
+        "count": 12,
+        "value": "#6ee7c8"
+      },
+      {
+        "count": 6,
+        "value": "#1c242a"
+      },
+      {
+        "count": 3,
+        "value": "#9ca7b0"
+      },
+      {
+        "count": 2,
+        "value": "#0d1013"
+      }
+    ],
+    "css_variables": {
+      "--acc": "#6EE7C8",
+      "--accF": "rgba(110,231,200,0.09)",
+      "--bd": "#222B32",
+      "--bds": "#33414B",
+      "--bg": "#0D1013",
+      "--grid": "#1E272E",
+      "--hdr": "#1C242A",
+      "--lab": "#8A949D",
+      "--raised": "#1C242A",
+      "--surf": "#141A1F",
+      "--tx": "#E6EBEF",
+      "--tx2": "#9CA7B0",
+      "--tx3": "#7F8A94",
+      "--warn": "#F5B544"
+    },
+    "font_faces": [],
+    "font_sizes": [
+      {
+        "count": 34,
+        "value": "12px"
+      },
+      {
+        "count": 32,
+        "value": "11px"
+      },
+      {
+        "count": 29,
+        "value": "13px"
+      },
+      {
+        "count": 11,
+        "value": "14px"
+      },
+      {
+        "count": 9,
+        "value": "34px"
+      },
+      {
+        "count": 1,
+        "value": "18px"
+      }
+    ],
+    "font_weights": [
+      {
+        "count": 87,
+        "value": "400"
+      },
+      {
+        "count": 29,
+        "value": "600"
+      }
+    ],
+    "fonts": [
+      {
+        "count": 116,
+        "value": "Inter, system-ui, sans-serif"
+      }
+    ],
+    "max_widths": [],
+    "radii": [
+      {
+        "count": 18,
+        "value": "50%"
+      },
+      {
+        "count": 12,
+        "value": "3px"
+      },
+      {
+        "count": 11,
+        "value": "14px"
+      },
+      {
+        "count": 10,
+        "value": "999px"
+      },
+      {
+        "count": 1,
+        "value": "10px"
+      }
+    ],
+    "shadows": [],
+    "spacing": [
+      {
+        "count": 55,
+        "value": "6px"
+      },
+      {
+        "count": 40,
+        "value": "8px"
+      },
+      {
+        "count": 38,
+        "value": "12px"
+      },
+      {
+        "count": 35,
+        "value": "10px"
+      },
+      {
+        "count": 30,
+        "value": "2px"
+      },
+      {
+        "count": 30,
+        "value": "4px"
+      },
+      {
+        "count": 25,
+        "value": "14px"
+      },
+      {
+        "count": 25,
+        "value": "18px"
+      },
+      {
+        "count": 24,
+        "value": "16px"
+      },
+      {
+        "count": 9,
+        "value": "30px"
+      },
+      {
+        "count": 4,
+        "value": "24px"
+      },
+      {
+        "count": 4,
+        "value": "3px"
+      },
+      {
+        "count": 2,
+        "value": "28px"
+      },
+      {
+        "count": 1,
+        "value": "20px"
+      }
+    ],
+    "text_colors": [
+      {
+        "count": 43,
+        "value": "#9ca7b0"
+      },
+      {
+        "count": 31,
+        "value": "#e6ebef"
+      },
+      {
+        "count": 27,
+        "value": "#7f8a94"
+      },
+      {
+        "count": 11,
+        "value": "#8a949d"
+      },
+      {
+        "count": 2,
+        "value": "#6ee7c8"
+      },
+      {
+        "count": 1,
+        "value": "#06231d"
+      },
+      {
+        "count": 1,
+        "value": "#f5b544"
+      }
+    ]
+  },
+  "forms": [],
+  "headings": [],
+  "health": {
+    "errors": [],
+    "failed_requests": []
+  },
+  "lang": "en",
+  "layouts": [
+    {
+      "blocks": [
+        {
+          "gap": 28,
+          "h": 116,
+          "pad": [
+            14,
+            24,
+            14,
+            24
+          ],
+          "per_row": 2,
+          "tag": "header",
+          "w": 1425,
+          "y": 0
+        },
+        {
+          "gap": 6,
+          "h": 35,
+          "pad": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "per_row": 3,
+          "tag": "nav",
+          "w": 269,
+          "y": 14
+        },
+        {
+          "gap": 16,
+          "h": 1045,
+          "pad": [
+            20,
+            24,
+            28,
+            24
+          ],
+          "per_row": 6,
+          "tag": "main",
+          "w": 1425,
+          "y": 116
+        },
+        {
+          "gap": 16,
+          "h": 997,
+          "pad": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "per_row": 6,
+          "tag": "section",
+          "w": 1377,
+          "y": 136
+        },
+        {
+          "gap": 16,
+          "h": 461,
+          "pad": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "per_row": 6,
+          "tag": "section",
+          "w": 1377,
+          "y": 136
+        },
+        {
+          "gap": 16,
+          "h": 489,
+          "pad": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "per_row": 2,
+          "tag": "section",
+          "w": 1377,
+          "y": 613
+        }
+      ],
+      "page_h": 1161,
+      "page_w": 1425,
+      "type": {
+        "body": 0,
+        "h1": 0,
+        "h2": 0,
+        "h3": 0
+      },
+      "width": 1440
+    },
+    {
+      "blocks": [
+        {
+          "gap": 28,
+          "h": 116,
+          "pad": [
+            14,
+            24,
+            14,
+            24
+          ],
+          "per_row": 2,
+          "tag": "header",
+          "w": 753,
+          "y": 0
+        },
+        {
+          "gap": 6,
+          "h": 35,
+          "pad": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "per_row": 3,
+          "tag": "nav",
+          "w": 269,
+          "y": 14
+        },
+        {
+          "gap": 16,
+          "h": 1147,
+          "pad": [
+            20,
+            24,
+            28,
+            24
+          ],
+          "per_row": 3,
+          "tag": "main",
+          "w": 753,
+          "y": 116
+        },
+        {
+          "gap": 16,
+          "h": 1099,
+          "pad": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "per_row": 3,
+          "tag": "section",
+          "w": 705,
+          "y": 136
+        },
+        {
+          "gap": 16,
+          "h": 488,
+          "pad": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "per_row": 3,
+          "tag": "section",
+          "w": 705,
+          "y": 136
+        },
+        {
+          "gap": 16,
+          "h": 564,
+          "pad": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "per_row": 2,
+          "tag": "section",
+          "w": 705,
+          "y": 640
+        }
+      ],
+      "page_h": 1263,
+      "page_w": 753,
+      "type": {
+        "body": 0,
+        "h1": 0,
+        "h2": 0,
+        "h3": 0
+      },
+      "width": 768
+    },
+    {
+      "blocks": [
+        {
+          "gap": 16,
+          "h": 212,
+          "pad": [
+            12,
+            16,
+            12,
+            16
+          ],
+          "per_row": 2,
+          "tag": "header",
+          "w": 390,
+          "y": 0
+        },
+        {
+          "gap": 6,
+          "h": 35,
+          "pad": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "per_row": 3,
+          "tag": "nav",
+          "w": 269,
+          "y": 59
+        },
+        {
+          "gap": 16,
+          "h": 2864,
+          "pad": [
+            16,
+            16,
+            16,
+            16
+          ],
+          "per_row": 2,
+          "tag": "main",
+          "w": 390,
+          "y": 212
+        },
+        {
+          "gap": 16,
+          "h": 2832,
+          "pad": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "per_row": 2,
+          "tag": "section",
+          "w": 358,
+          "y": 228
+        },
+        {
+          "gap": 16,
+          "h": 1987,
+          "pad": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "per_row": 2,
+          "tag": "section",
+          "w": 358,
+          "y": 228
+        },
+        {
+          "gap": 16,
+          "h": 783,
+          "pad": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "per_row": 2,
+          "tag": "section",
+          "w": 358,
+          "y": 2231
+        }
+      ],
+      "page_h": 3076,
+      "page_w": 390,
+      "type": {
+        "body": 0,
+        "h1": 0,
+        "h2": 0,
+        "h3": 0
+      },
+      "width": 390
+    }
+  ],
+  "links": [],
+  "meta": {
+    "description": "",
+    "icons": [],
+    "og_image": "",
+    "og_title": "",
+    "theme_color": ""
+  },
+  "outline": [
+    {
+      "box": {
+        "h": 116,
+        "w": 1425,
+        "x": 0,
+        "y": 0
+      },
+      "class": "topbar",
+      "color": "#e6ebef",
+      "depth": 2,
+      "display": "flex",
+      "flex": "row",
+      "font": "14px 400",
+      "tag": "header"
+    },
+    {
+      "background": "#141a1f",
+      "box": {
+        "h": 35,
+        "w": 183,
+        "x": 116,
+        "y": 14
+      },
+      "class": "device-pill",
+      "color": "#e6ebef",
+      "depth": 4,
+      "font": "14px 400",
+      "id": "devicePill",
+      "tag": "button",
+      "text": "This Mac 1 device"
+    },
+    {
+      "box": {
+        "h": 14,
+        "w": 14,
+        "x": 271,
+        "y": 25
+      },
+      "color": "#e6ebef",
+      "depth": 5,
+      "font": "14px 400",
+      "tag": "svg"
+    },
+    {
+      "box": {
+        "h": 35,
+        "w": 269,
+        "x": 326,
+        "y": 14
+      },
+      "class": "tabs",
+      "color": "#e6ebef",
+      "depth": 3,
+      "display": "flex",
+      "flex": "row",
+      "font": "14px 400",
+      "role": "tablist",
+      "tag": "nav"
+    },
+    {
+      "box": {
+        "h": 35,
+        "w": 83,
+        "x": 326,
+        "y": 14
+      },
+      "class": "tab active",
+      "color": "#6ee7c8",
+      "depth": 4,
+      "font": "14px 600",
+      "role": "tab",
+      "tag": "button",
+      "text": "Overview"
+    },
+    {
+      "box": {
+        "h": 35,
+        "w": 53,
+        "x": 415,
+        "y": 14
+      },
+      "class": "tab",
+      "color": "#9ca7b0",
+      "depth": 4,
+      "font": "14px 400",
+      "role": "tab",
+      "tag": "button",
+      "text": "Apps"
+    },
+    {
+      "box": {
+        "h": 35,
+        "w": 79,
+        "x": 475,
+        "y": 14
+      },
+      "class": "tab",
+      "color": "#9ca7b0",
+      "depth": 4,
+      "font": "14px 400",
+      "role": "tab",
+      "tag": "button",
+      "text": "Analytics"
+    },
+    {
+      "box": {
+        "h": 32,
+        "w": 36,
+        "x": 560,
+        "y": 16
+      },
+      "class": "iconbtn",
+      "color": "#9ca7b0",
+      "depth": 4,
+      "font": "13.3333px 400",
+      "tag": "button"
+    },
+    {
+      "box": {
+        "h": 16,
+        "w": 16,
+        "x": 570,
+        "y": 24
+      },
+      "color": "#9ca7b0",
+      "depth": 5,
+      "font": "13.3333px 400",
+      "tag": "svg"
+    },
+    {
+      "box": {
+        "h": 28,
+        "w": 41,
+        "x": 261,
+        "y": 69
+      },
+      "class": "range-pill",
+      "color": "#9ca7b0",
+      "depth": 5,
+      "font": "13px 400",
+      "tag": "button",
+      "text": "1m"
+    },
+    {
+      "box": {
+        "h": 28,
+        "w": 43,
+        "x": 305,
+        "y": 69
+      },
+      "class": "range-pill",
+      "color": "#9ca7b0",
+      "depth": 5,
+      "font": "13px 400",
+      "tag": "button",
+      "text": "5m"
+    },
+    {
+      "box": {
+        "h": 28,
+        "w": 49,
+        "x": 350,
+        "y": 69
+      },
+      "class": "range-pill",
+      "color": "#9ca7b0",
+      "depth": 5,
+      "font": "13px 400",
+      "tag": "button",
+      "text": "15m"
+    },
+    {
+      "background": "#6ee7c8",
+      "box": {
+        "h": 28,
+        "w": 38,
+        "x": 401,
+        "y": 69
+      },
+      "class": "range-pill active",
+      "color": "#06231d",
+      "depth": 5,
+      "font": "13px 600",
+      "tag": "button",
+      "text": "1h"
+    },
+    {
+      "box": {
+        "h": 28,
+        "w": 40,
+        "x": 441,
+        "y": 69
+      },
+      "class": "range-pill",
+      "color": "#9ca7b0",
+      "depth": 5,
+      "font": "13px 400",
+      "tag": "button",
+      "text": "6h"
+    },
+    {
+      "box": {
+        "h": 28,
+        "w": 38,
+        "x": 483,
+        "y": 69
+      },
+      "class": "range-pill",
+      "color": "#9ca7b0",
+      "depth": 5,
+      "font": "13px 400",
+      "tag": "button",
+      "text": "1d"
+    },
+    {
+      "box": {
+        "h": 28,
+        "w": 39,
+        "x": 523,
+        "y": 69
+      },
+      "class": "range-pill",
+      "color": "#9ca7b0",
+      "depth": 5,
+      "font": "13px 400",
+      "tag": "button",
+      "text": "7d"
+    },
+    {
+      "box": {
+        "h": 28,
+        "w": 48,
+        "x": 564,
+        "y": 69
+      },
+      "class": "range-pill",
+      "color": "#9ca7b0",
+      "depth": 5,
+      "font": "13px 400",
+      "tag": "button",
+      "text": "30d"
+    },
+    {
+      "box": {
+        "h": 28,
+        "w": 37,
+        "x": 614,
+        "y": 69
+      },
+      "class": "range-pill",
+      "color": "#9ca7b0",
+      "depth": 5,
+      "font": "13px 400",
+      "tag": "button",
+      "text": "1y"
+    },
+    {
+      "box": {
+        "h": 1045,
+        "w": 1425,
+        "x": 0,
+        "y": 116
+      },
+      "class": "main",
+      "color": "#e6ebef",
+      "depth": 2,
+      "display": "flex",
+      "flex": "column",
+      "font": "14px 400",
+      "tag": "main"
+    },
+    {
+      "box": {
+        "h": 997,
+        "w": 1377,
+        "x": 24,
+        "y": 136
+      },
+      "class": "tabview active",
+      "color": "#e6ebef",
+      "depth": 3,
+      "display": "flex",
+      "flex": "column",
+      "font": "14px 400",
+      "id": "tab-overview",
+      "tag": "section"
+    },
+    {
+      "box": {
+        "h": 461,
+        "w": 1377,
+        "x": 24,
+        "y": 136
+      },
+      "class": "tiles",
+      "color": "#e6ebef",
+      "depth": 4,
+      "display": "grid",
+      "font": "14px 400",
+      "grid": "216.156px 216.172px 216.172px 216.156px 216.172px 216.172px",
+      "id": "tiles",
+      "tag": "section"
+    },
+    {
+      "background": "#141a1f",
+      "box": {
+        "h": 198,
+        "w": 216,
+        "x": 24,
+        "y": 136
+      },
+      "class": "tile",
+      "color": "#e6ebef",
+      "depth": 5,
+      "font": "14px 400",
+      "role": "button",
+      "tag": "div",
+      "text": "PROCESSOR ? 46.4 % 8 cores 16.6 points above last hour"
+    },
+    {
+      "box": {
+        "h": 28,
+        "w": 28,
+        "x": 201,
+        "y": 147
+      },
+      "class": "tile-help",
+      "color": "#9ca7b0",
+      "depth": 6,
+      "font": "13.3333px 400",
+      "tag": "button",
+      "text": "?"
+    },
+    {
+      "box": {
+        "h": 44,
+        "w": 178,
+        "x": 43,
+        "y": 220
+      },
+      "color": "#e6ebef",
+      "depth": 7,
+      "font": "14px 400",
+      "tag": "svg"
+    },
+    {
+      "background": "#141a1f",
+      "box": {
+        "h": 198,
+        "w": 216,
+        "x": 256,
+        "y": 136
+      },
+      "class": "tile",
+      "color": "#e6ebef",
+      "depth": 5,
+      "font": "14px 400",
+      "role": "button",
+      "tag": "div",
+      "text": "MEMORY ? 83.3 % 2.9 GB of 8.0 GB in use 1.4 points above last hour"
+    },
+    {
+      "box": {
+        "h": 28,
+        "w": 28,
+        "x": 433,
+        "y": 147
+      },
+      "class": "tile-help",
+      "color": "#9ca7b0",
+      "depth": 6,
+      "font": "13.3333px 400",
+      "tag": "button",
+      "text": "?"
+    },
+    {
+      "box": {
+        "h": 44,
+        "w": 178,
+        "x": 275,
+        "y": 220
+      },
+      "color": "#e6ebef",
+      "depth": 7,
+      "font": "14px 400",
+      "tag": "svg"
+    },
+    {
+      "background": "#141a1f",
+      "box": {
+        "h": 198,
+        "w": 216,
+        "x": 488,
+        "y": 136
+      },
+      "class": "tile",
+      "color": "#e6ebef",
+      "depth": 5,
+      "font": "14px 400",
+      "role": "button",
+      "tag": "div",
+      "text": "GRAPHICS ? 8.0 % drawing the screen: 8 % 571 MB vram"
+    },
+    {
+      "box": {
+        "h": 28,
+        "w": 28,
+        "x": 666,
+        "y": 147
+      },
+      "class": "tile-help",
+      "color": "#9ca7b0",
+      "depth": 6,
+      "font": "13.3333px 400",
+      "tag": "button",
+      "text": "?"
+    },
+    {
+      "box": {
+        "h": 44,
+        "w": 178,
+        "x": 507,
+        "y": 220
+      },
+      "color": "#e6ebef",
+      "depth": 7,
+      "font": "14px 400",
+      "tag": "svg"
+    },
+    {
+      "background": "#141a1f",
+      "box": {
+        "h": 198,
+        "w": 216,
+        "x": 721,
+        "y": 136
+      },
+      "class": "tile",
+      "color": "#e6ebef",
+      "depth": 5,
+      "font": "14px 400",
+      "role": "button",
+      "tag": "div",
+      "text": "BATTERY ? 80 % on adapter · 67 W Holds 81 % of new"
+    },
+    {
+      "box": {
+        "h": 28,
+        "w": 28,
+        "x": 898,
+        "y": 147
+      },
+      "class": "tile-help",
+      "color": "#9ca7b0",
+      "depth": 6,
+      "font": "13.3333px 400",
+      "tag": "button",
+      "text": "?"
+    },
+    {
+      "box": {
+        "h": 44,
+        "w": 178,
+        "x": 740,
+        "y": 220
+      },
+      "color": "#e6ebef",
+      "depth": 7,
+      "font": "14px 400",
+      "tag": "svg"
+    },
+    {
+      "background": "#141a1f",
+      "box": {
+        "h": 198,
+        "w": 216,
+        "x": 953,
+        "y": 136
+      },
+      "class": "tile",
+      "color": "#e6ebef",
+      "depth": 5,
+      "font": "14px 400",
+      "role": "button",
+      "tag": "div",
+      "text": "POWER USE ? — Processor — W · Graphics — W root daemon sampling"
+    },
+    {
+      "box": {
+        "h": 28,
+        "w": 28,
+        "x": 1130,
+        "y": 147
+      },
+      "class": "tile-help",
+      "color": "#9ca7b0",
+      "depth": 6,
+      "font": "13.3333px 400",
+      "tag": "button",
+      "text": "?"
+    },
+    {
+      "box": {
+        "h": 44,
+        "w": 178,
+        "x": 972,
+        "y": 220
+      },
+      "color": "#e6ebef",
+      "depth": 7,
+      "font": "14px 400",
+      "tag": "svg"
+    },
+    {
+      "background": "#141a1f",
+      "box": {
+        "h": 198,
+        "w": 216,
+        "x": 1185,
+        "y": 136
+      },
+      "class": "tile",
+      "color": "#e6ebef",
+      "depth": 5,
+      "font": "14px 400",
+      "role": "button",
+      "tag": "div",
+      "text": "WORKLOAD ? 4.55 5 min 4.44 · 15 min 4.34 across 8 cores"
+    },
+    {
+      "box": {
+        "h": 28,
+        "w": 28,
+        "x": 1362,
+        "y": 147
+      },
+      "class": "tile-help",
+      "color": "#9ca7b0",
+      "depth": 6,
+      "font": "13.3333px 400",
+      "tag": "button",
+      "text": "?"
+    },
+    {
+      "box": {
+        "h": 44,
+        "w": 178,
+        "x": 1204,
+        "y": 220
+      },
+      "color": "#e6ebef",
+      "depth": 7,
+      "font": "14px 400",
+      "tag": "svg"
+    },
+    {
+      "background": "#141a1f",
+      "box": {
+        "h": 246,
+        "w": 448,
+        "x": 24,
+        "y": 350
+      },
+      "class": "tile wide",
+      "color": "#e6ebef",
+      "depth": 5,
+      "font": "14px 400",
+      "role": "button",
+      "tag": "div",
+      "text": "NETWORK TRAFFIC ? 20.9 KB/s 19:05 19:25 19:45 now Downloading 20.9 KB/s Uploading 8.4 KB/s"
+    },
+    {
+      "box": {
+        "h": 14,
+        "w": 14,
+        "x": 409,
+        "y": 369
+      },
+      "color": "#7f8a94",
+      "depth": 7,
+      "font": "14px 400",
+      "tag": "svg"
+    },
+    {
+      "box": {
+        "h": 28,
+        "w": 28,
+        "x": 433,
+        "y": 361
+      },
+      "class": "tile-help",
+      "color": "#9ca7b0",
+      "depth": 6,
+      "font": "13.3333px 400",
+      "tag": "button",
+      "text": "?"
+    },
+    {
+      "box": {
+        "h": 120,
+        "w": 410,
+        "x": 43,
+        "y": 435
+      },
+      "color": "#e6ebef",
+      "depth": 7,
+      "font": "14px 400",
+      "tag": "svg"
+    },
+    {
+      "background": "#141a1f",
+      "box": {
+        "h": 246,
+        "w": 448,
+        "x": 488,
+        "y": 350
+      },
+      "class": "tile wide",
+      "color": "#e6ebef",
+      "depth": 5,
+      "font": "14px 400",
+      "role": "button",
+      "tag": "div",
+      "text": "STORAGE ACTIVITY ? 123.6 MB/s 19:05 19:25 19:45 now Reading 121.2 MB/s Writing 2.3 MB/s"
+    },
+    {
+      "box": {
+        "h": 14,
+        "w": 14,
+        "x": 874,
+        "y": 369
+      },
+      "color": "#7f8a94",
+      "depth": 7,
+      "font": "14px 400",
+      "tag": "svg"
+    },
+    {
+      "box": {
+        "h": 28,
+        "w": 28,
+        "x": 898,
+        "y": 361
+      },
+      "class": "tile-help",
+      "color": "#9ca7b0",
+      "depth": 6,
+      "font": "13.3333px 400",
+      "tag": "button",
+      "text": "?"
+    },
+    {
+      "box": {
+        "h": 120,
+        "w": 410,
+        "x": 507,
+        "y": 435
+      },
+      "color": "#e6ebef",
+      "depth": 7,
+      "font": "14px 400",
+      "tag": "svg"
+    },
+    {
+      "background": "#141a1f",
+      "box": {
+        "h": 246,
+        "w": 448,
+        "x": 953,
+        "y": 350
+      },
+      "class": "tile wide",
+      "color": "#e6ebef",
+      "depth": 5,
+      "font": "14px 400",
+      "role": "button",
+      "tag": "div",
+      "text": "TEMPERATURE ? 41.5 °C 19:05 19:25 19:45 now Processor 41.5 °C Graphics — °C · heat level normal"
+    },
+    {
+      "box": {
+        "h": 14,
+        "w": 14,
+        "x": 1338,
+        "y": 369
+      },
+      "color": "#7f8a94",
+      "depth": 7,
+      "font": "14px 400",
+      "tag": "svg"
+    },
+    {
+      "box": {
+        "h": 28,
+        "w": 28,
+        "x": 1362,
+        "y": 361
+      },
+      "class": "tile-help",
+      "color": "#9ca7b0",
+      "depth": 6,
+      "font": "13.3333px 400",
+      "tag": "button",
+      "text": "?"
+    },
+    {
+      "box": {
+        "h": 120,
+        "w": 410,
+        "x": 972,
+        "y": 435
+      },
+      "color": "#e6ebef",
+      "depth": 7,
+      "font": "14px 400",
+      "tag": "svg"
+    },
+    {
+      "box": {
+        "h": 489,
+        "w": 1377,
+        "x": 24,
+        "y": 613
+      },
+      "class": "panels",
+      "color": "#e6ebef",
+      "depth": 4,
+      "display": "grid",
+      "font": "14px 400",
+      "grid": "216.156px 216.156px 216.156px 216.156px 216.172px 216.172px",
+      "tag": "section"
+    },
+    {
+      "box": {
+        "h": 15,
+        "w": 45,
+        "x": 873,
+        "y": 634
+      },
+      "class": "linkbtn",
+      "color": "#6ee7c8",
+      "depth": 7,
+      "font": "12px 400",
+      "tag": "button",
+      "text": "All apps"
+    },
+    {
+      "box": {
+        "h": 14,
+        "w": 14,
+        "x": 972,
+        "y": 666
+      },
+      "color": "#f5b544",
+      "depth": 8,
+      "font": "14px 400",
+      "tag": "svg"
+    }
+  ],
+  "page": {
+    "h": 1161,
+    "w": 1425
+  },
+  "text": "syswatch This Mac 1 device Overview Apps Analytics 1m 5m 15m 1h 6h 1d 7d 30d 1y Private · only your devices can see this live PROCESSOR ? 46.4 % 8 cores 16.6 points above last hour MEMORY ? 83.3 % 2.9 GB of 8.0 GB in use 1.4 points above last hour GRAPHICS ? 8.0 % drawing the screen: 8 % 571 MB vram BATTERY ? 80 % on adapter · 67 W Holds 81 % of new POWER USE ? — Processor — W · Graphics — W root daemon sampling WORKLOAD ? 4.55 5 min 4.44 · 15 min 4.34 across 8 cores NETWORK TRAFFIC ? 20.9 KB/s 19:05 19:25 19:45 now Downloading 20.9 KB/s Uploading 8.4 KB/s STORAGE ACTIVITY ? 123.6 MB/s 19:05 19:25 19:45 now Reading 121.2 MB/s Writing 2.3 MB/s TEMPERATURE ? 41.5 °C 19:05 19:25 19:45 now Processor 41.5 °C Graphics — °C · heat level normal APPS USING THE MOST · % OF THE PROCESSOR · LAST HOUR All apps mediaanalysisd 0.0 % GridCraft 0.0 % Google Chrome Helper (Aperitif Renderer) 0.0 % PdfCraft 0.0 % craft-anything 0.0 % com.apple.WebKit.WebContent 0.0 % STATUS Memory is getting tight 2.9 of 8.0 GB in use Monitoring is running uses — % of the processor · 12 MB 97 sensors found Deep power readings are locked. Collector log age 4 s since the last collector sample Last sample time 2026-11-21T20:05:26+00:00 Disk free 68.4 GB free of 228.3 GB Battery health Holds 80.9 % of its original charge · 351 cycles Sensor source platform: macos drag a chart to zoom · double-click resets · hover any value for its graph · tap ? to see what a number means",
+  "title": "syswatch · dark dashboard",
+  "unreadable_stylesheets": 0,
+  "url": "http://127.0.0.1:8123/#apps",
+  "viewport": {
+    "h": 900,
+    "w": 1440
+  }
+}
